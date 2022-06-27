@@ -61,7 +61,7 @@ classdef ExperimentManager < handle
                     
                     % Reset timer if manipulator is not in center target
                     distFromCenter = norm(manXYB);
-                    if distFromCenter > trial.target{4}
+                    if distFromCenter > trial.target.Radius
                         startTime = GetSecs;
                     end
                     

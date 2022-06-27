@@ -49,7 +49,7 @@ classdef DisplayManager < handle
 
         function drawElementInCenter(self, element)
             % Draws only the target shape in the center of the screen
-            element{3} = [0, 0];
+            element.Location = [0, 0];
             self.drawElements(element);
         end
         
@@ -62,13 +62,13 @@ classdef DisplayManager < handle
             % Draws a list of elements on the next frame. All strings in
             % the first column of elements must be valid textures.
 
-            for el = 1:size(elements, 1)
-                location = self.centerToScreen(elements{el, 3});
-                targetRadius = elements{el, 4};
+            for ii = 1:length(elements)
+                location = self.centerToScreen(elements(ii).Location);
+                targetRadius = elements(ii).Radius;
 
-                switch elements{el, 1}
+                switch elements(ii).ElementType
                     case 'texture'
-                        texture = self.textures.(elements{el, 2});
+                        texture = self.textures.(elements(ii).Shape);
                         self.drawTexture(texture, location, targetRadius);
                     case 'vertices'
 

@@ -78,12 +78,12 @@ classdef SingleShapeRingTrial < TrialInterface
             xList = self.distFromCenter * cosd(thetaList);
             yList = self.distFromCenter * sind(thetaList);
             for ii = 1:self.numTargets
-                self.elements{ii, 1} = 'texture';
-                self.elements{ii, 2} = self.allowedShapes{shapeIdxList(ii)};
-                self.elements{ii, 3} = [xList(ii), yList(ii)];
-                self.elements{ii, 4} = self.targetRadius;
+                self.elements(ii).ElementType = 'texture';
+                self.elements(ii).Shape = self.allowedShapes{shapeIdxList(ii)};
+                self.elements(ii).Location = [xList(ii), yList(ii)];
+                self.elements(ii).Radius = self.targetRadius;
                 if shapeIdxList(ii) == targetShapeIdx
-                    self.target = {'texture', self.allowedShapes{targetShapeIdx}, [xList(ii), yList(ii)], self.targetRadius};
+                    self.target = self.elements(ii);
                 end
             end
         end
@@ -94,9 +94,9 @@ classdef SingleShapeRingTrial < TrialInterface
             % Otherwise, return 0. Input XY must be relative to screen 
             % center.
             conditionFlag = 0;
-            targetLoc = self.target{3};
+            targetLoc = self.target.Location;
             distFromTarget = norm(state([1,2]) - targetLoc);
-            if state(3) && (distFromTarget <= self.targetRadius)
+            if state(3) && (distFromTarget <= self.target.Radius)
                 conditionFlag = 1;
             end
         end
