@@ -33,7 +33,7 @@ classdef ExperimentManager < handle
             self.manipulator.establish(self.display.window);
 
             for ii = 1:length(self.trials)
-                self.runTrial(self.trials{ii})
+                self.runTrial(self.trials{ii});
             end
         end
 
@@ -53,7 +53,7 @@ classdef ExperimentManager < handle
                 startTime = GetSecs;
                 while (GetSecs - startTime < 1)
                     % Prime the target in the screen center
-                    self.display.drawTargetInCenter(trial.target);
+                    self.display.drawElementInCenter(trial.target);
 
                     % Poll and draw the manipulator
                     manXYB = self.manipulator.poll();
@@ -61,7 +61,7 @@ classdef ExperimentManager < handle
                     
                     % Reset timer if manipulator is not in center target
                     distFromCenter = norm(manXYB);
-                    if distFromCenter > trial.target{3}
+                    if distFromCenter > trial.target{4}
                         startTime = GetSecs;
                     end
                     

@@ -21,8 +21,8 @@ manipulator = TouchScreenMouseCursor();
 manager = ExperimentManager(screenID, eyeTracker, manipulator);
 
 % Add a set of trials
-manager.addTrial(SingleShapeRingTrial(5, 3, 2, 25));
-manager.addTrial(SingleShapeRingTrial(5, 3, 2, 25, 90));
+manager.addTrial(SingleShapeRingTrial(3, 3, 2, 50));
+manager.addTrial(SingleShapeRingTrial(3, 3, 2, 50, 90));
 
 % Run the experiment
 manager.run();

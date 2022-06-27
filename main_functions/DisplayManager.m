@@ -47,18 +47,14 @@ classdef DisplayManager < handle
             Screen('Flip', self.window);
         end
 
-        function drawTargetInCenter(self, target)
+        function drawElementInCenter(self, element)
             % Draws only the target shape in the center of the screen
-            texture = self.textures.(target{1});
-            location = [self.xCenter, self.yCenter];
-            targetRadius = target{3};
-            baseRect = [0, 0, 256, 256] * targetRadius / 100;
-            destRect = CenterRectOnPointd(baseRect, location(1), location(2));
-            Screen('DrawTexture', self.window, texture, [], destRect);
+            element{3} = [0, 0];
+            self.drawElements(element);
         end
         
         function drawDotAt(self, centerCoords)
-            screenCoords = centerCoords .* [1, -1] + [self.xCenter, self.yCenter];
+            screenCoords = self.centerToScreen(centerCoords);
             Screen('DrawDots', self.window, screenCoords, 10, self.white, [], 1);
         end
 
@@ -67,18 +63,39 @@ classdef DisplayManager < handle
             % the first column of elements must be valid textures.
 
             for el = 1:size(elements, 1)
-                texture = self.textures.(elements{el, 1});
-                location = elements{el, 2} .* [1, -1] + [self.xCenter, self.yCenter];
-                targetRadius = elements{el, 3};
-                baseRect = [0, 0, 256, 256] * targetRadius / 100;
-                destRect = CenterRectOnPointd(baseRect, location(1), location(2));
-                Screen('DrawTexture', self.window, texture, [], destRect);
+                location = self.centerToScreen(elements{el, 3});
+                targetRadius = elements{el, 4};
+
+                switch elements{el, 1}
+                    case 'texture'
+                        texture = self.textures.(elements{el, 2});
+                        self.drawTexture(texture, location, targetRadius);
+                    case 'vertices'
+
+                    otherwise
+                end
             end
         end
 
         function self = close(self)
             Priority(0);
             sca;
+        end
+    end
+
+    methods (Access = private)
+        function drawTexture(self, texture, location, targetRadius)
+            baseRect = [0, 0, 256, 256] * targetRadius / 100;
+            destRect = CenterRectOnPointd(baseRect, location(1), location(2));
+            Screen('DrawTexture', self.window, texture, [], destRect);
+        end
+
+        function screenCoords = centerToScreen(self, centerCoords)
+            screenCoords = centerCoords .* [1, -1] + [self.xCenter, self.yCenter];
+        end
+
+        function centerCoords = screenToCenter(self, screenCoords)
+            centerCoords = (screenCoords - [self.xCenter, self.yCenter]) .* [1, -1];
         end
     end
 end

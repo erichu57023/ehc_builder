@@ -9,13 +9,16 @@ classdef SingleShapeRingTrial < TrialInterface
         target
         failzone
     end
-
     properties (Access = private)
         numTargets
         targetRadius
         distFromCenter
         axis
-        allowedShapes = {'Circle', 'Triangle', 'Square', 'Cross'}
+    end
+    properties(Constant)
+        allowedShapes = {'Circle', 'Triangle', 'Square', 'Cross'};
+        instructions = ['You will see a shape in the center of the screen. To begin, hold your cursor on that shape. ' ...
+            'A number of targets will appear. Touch the target that matches that shape.'];
     end
 
     methods
@@ -53,12 +56,14 @@ classdef SingleShapeRingTrial < TrialInterface
                 targetShapeIdx = shapeIdxList(randi(2));
 
             else
+                % Generate a random list of shapes to display
                 totalNumShapes = min(length(self.allowedShapes), ceil(self.numTargets/2));
                 validShapeIdxs = randperm(length(self.allowedShapes), totalNumShapes);
                 targetShapeIdx = validShapeIdxs(randi(totalNumShapes));
                 nonTargetShapes = validShapeIdxs(validShapeIdxs ~= targetShapeIdx);
     
                 % Ensure non-target shapes are represented at least twice
+                % (only the target can be displayed singly)
                 shapeIdxList = repmat(nonTargetShapes, 1, 1 + self.numTargets);
                 shapeIdxList = shapeIdxList(1 : self.numTargets-1); 
                 shapeIdxList = shapeIdxList(randperm(length(shapeIdxList)));
@@ -68,27 +73,28 @@ classdef SingleShapeRingTrial < TrialInterface
                 shapeIdxList = shapeIdxList(randperm(self.numTargets));
             end
             
-            % Define location of all elements relative to center
+            % Define location of all elements relative to screen center
             thetaList = linspace(0, 360, self.numTargets + 1) + self.axis;
             xList = self.distFromCenter * cosd(thetaList);
             yList = self.distFromCenter * sind(thetaList);
             for ii = 1:self.numTargets
-                self.elements{ii, 1} = self.allowedShapes{shapeIdxList(ii)};
-                self.elements{ii, 2} = [xList(ii), yList(ii)];
-                self.elements{ii, 3} = self.targetRadius;
+                self.elements{ii, 1} = 'texture';
+                self.elements{ii, 2} = self.allowedShapes{shapeIdxList(ii)};
+                self.elements{ii, 3} = [xList(ii), yList(ii)];
+                self.elements{ii, 4} = self.targetRadius;
                 if shapeIdxList(ii) == targetShapeIdx
-                    self.target = {self.allowedShapes{targetShapeIdx}, [xList(ii), yList(ii)], self.targetRadius};
+                    self.target = {'texture', self.allowedShapes{targetShapeIdx}, [xList(ii), yList(ii)], self.targetRadius};
                 end
             end
         end
 
         function conditionFlag = check(self, state)
-            % Generates a conditionFlag based on manipulator state. If
+            % Generates a conditionFlag based on input state. If
             % check passes, returns 1. If check fails, returns -1.
-            % Otherwise, return 0. IMPORTANT: coords XY is relative to
-            % screen center.
+            % Otherwise, return 0. Input XY must be relative to screen 
+            % center.
             conditionFlag = 0;
-            targetLoc = self.target{2};
+            targetLoc = self.target{3};
             distFromTarget = norm(state([1,2]) - targetLoc);
             if state(3) && (distFromTarget <= self.targetRadius)
                 conditionFlag = 1;
