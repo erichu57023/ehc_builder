@@ -1,7 +1,7 @@
 classdef DisplayManager < handle
     properties
         screen
-        white; black
+        white; black; bgColor
         window; windowRect
         xMax; yMax; xCenter; yCenter
     end
@@ -11,9 +11,10 @@ classdef DisplayManager < handle
     end
 
     methods
-        function self = DisplayManager(screenID)
+        function self = DisplayManager(screenID, backgroundWeightedRGB)
             arguments
                 screenID (1,1) {mustBeInteger, mustBePositive}
+                backgroundWeightedRGB (1,3) = [0, 0, 0];
             end
             Screen('Preference','SkipSyncTests', 1);
             PsychImaging('PrepareConfiguration');
@@ -22,16 +23,19 @@ classdef DisplayManager < handle
             self.screen = screenID;
             self.white = WhiteIndex(screenID);
             self.black = BlackIndex(screenID);
+            self.bgColor = backgroundWeightedRGB * (self.white - self.black) + self.black;
         end
 
         function self = openWindow(self)
             % Create window and adjust settings
-            [self.window, self.windowRect] = PsychImaging('OpenWindow', self.screen, self.black);
+            
+            [self.window, self.windowRect] = PsychImaging('OpenWindow', self.screen, self.bgColor);
             [self.xMax, self.yMax] = Screen('WindowSize', self.window);
             [self.xCenter, self.yCenter] = RectCenter(self.windowRect);
             Screen('TextFont', self.window, 'Ariel');
             Screen('TextSize', self.window, 50);
             Screen('BlendFunction', self.window, 'GL_ONE', 'GL_DST_ALPHA');
+            HideCursor(self.window);
             Priority(MaxPriority(self.window));
 
             % Load shape textures into window for fast display
@@ -45,6 +49,16 @@ classdef DisplayManager < handle
         function update(self)
             % Draws the next frame of the screen
             Screen('Flip', self.window);
+        end
+
+        function updateAsync(self)
+            % Queues the next frame of the screen asynchronously
+            Screen('AsyncFlipBegin', self.window);
+        end
+
+        function ready = asyncReady(self)
+            % Checks if there is currently an async frame update scheduled
+            ready = Screen('AsyncFlipCheckEnd', self.window);
         end
 
         function drawElementInCenter(self, element)

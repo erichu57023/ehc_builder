@@ -6,16 +6,13 @@ classdef NoEyeTracker < EyeTrackerInterface
     methods
         function self = NoEyeTracker(); end
 
-        function self = establish(self)
-            self.state = [0, 0];
-        end
+        function self = establish(self); end
 
         function state = poll(self)
+            self.state = [GetSecs, 0, 0];
             state = self.state; 
         end
 
-        function self = close(self)
-            self.state = nan;
-        end
+        function self = close(self); end
     end
 end

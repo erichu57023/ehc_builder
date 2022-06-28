@@ -1,14 +1,11 @@
 classdef TouchScreenMouseCursor < ManipulatorInterface
     properties (Access = private)
-        state
         window
         xMax; yMax
     end
 
     methods
-        function self = TouchScreenMouseCursor() 
-            self.state = [];
-        end
+        function self = TouchScreenMouseCursor(); end
 
         function self = establish(self, window)
             % Establishes a connection with the device
@@ -22,13 +19,11 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             [x, y, buttons] = GetMouse(self.window);
             x = min(x, self.xMax) - self.xMax/2;
             y = -(min(y, self.yMax) - self.yMax/2);
-            self.state = [x, y, any(buttons)];
-            state = self.state; 
+            state = [GetSecs, x, y, any(buttons)];
         end
 
         function self = close(self)
             % Closes the connection with the device
-            self.state = [];
         end
     end
 end
