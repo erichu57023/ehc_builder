@@ -4,6 +4,7 @@ classdef DisplayManager < handle
         white; black; bgColor
         window; windowRect
         xMax; yMax; xCenter; yCenter
+        ifi
     end
 
     properties (Access = private)
@@ -19,6 +20,7 @@ classdef DisplayManager < handle
             Screen('Preference','SkipSyncTests', 1);
             PsychImaging('PrepareConfiguration');
             PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
+            PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 
             self.screen = screenID;
             self.white = WhiteIndex(screenID);
@@ -32,6 +34,8 @@ classdef DisplayManager < handle
             [self.window, self.windowRect] = PsychImaging('OpenWindow', self.screen, self.bgColor);
             [self.xMax, self.yMax] = Screen('WindowSize', self.window);
             [self.xCenter, self.yCenter] = RectCenter(self.windowRect);
+            self.ifi = Screen('GetFlipInterval', self.window);
+            disp(self.ifi)
             Screen('TextFont', self.window, 'Ariel');
             Screen('TextSize', self.window, 50);
             Screen('BlendFunction', self.window, 'GL_ONE', 'GL_DST_ALPHA');
@@ -44,6 +48,7 @@ classdef DisplayManager < handle
             for ii = 1:length(shapeNames)
                 self.textures.(shapeNames{ii}) = Screen('MakeTexture', self.window, bitmaps.(shapeNames{ii}));
             end
+            Screen('PreloadTextures', self.window);
         end
 
         function update(self)
@@ -51,14 +56,19 @@ classdef DisplayManager < handle
             Screen('Flip', self.window);
         end
 
-        function updateAsync(self)
+        function updateAsync(self, t)
             % Queues the next frame of the screen asynchronously
-            Screen('AsyncFlipBegin', self.window);
+            Screen('AsyncFlipBegin', self.window, t + self.ifi/2);
         end
 
         function ready = asyncReady(self)
             % Checks if there is currently an async frame update scheduled
             ready = Screen('AsyncFlipCheckEnd', self.window);
+        end
+
+        function asyncEnd(self)
+            % Blocks until previously scheduled async frame is complete
+            Screen('AsyncFlipEnd', self.window);
         end
 
         function drawElementInCenter(self, element)
@@ -90,10 +100,12 @@ classdef DisplayManager < handle
                 end
             end
         end
+        
+        function emptyScreen(self)
+            Screen('FillRect', self.window, self.bgColor);
+        end
 
         function self = close(self)
-            Priority(0);
-            sca;
         end
     end
 

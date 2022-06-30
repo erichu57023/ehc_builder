@@ -96,7 +96,7 @@ classdef SingleShapeRingTrial < TrialInterface
             conditionFlag = 0;
             targetLoc = self.target.Location;
             distFromTarget = norm(state([2,3]) - targetLoc);
-            if state(4) && (distFromTarget <= self.target.Radius)
+            if (distFromTarget <= self.target.Radius) % && state(4)
                 conditionFlag = 1;
             end
         end

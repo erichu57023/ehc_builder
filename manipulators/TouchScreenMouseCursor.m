@@ -11,7 +11,7 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             % Establishes a connection with the device
             self.window = window;
             [self.xMax, self.yMax] = Screen('WindowSize', self.window);
-            SetMouse(0, 0, window);
+            SetMouse(0, 0, self.window);
         end
 
         function state = poll(self)
