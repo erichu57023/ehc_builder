@@ -37,11 +37,17 @@ classdef ExperimentManager < handle
             self.data.NumTrials = self.data.NumTrials + 1;
         end
 
-        function run(self)
+        function calibrate(self)
             self.display.openWindow();
-            self.eyeTracker.establish();
-            self.manipulator.establish(self.display.window);
 
+            if ~self.eyeTracker.establish(self.display); return; end
+            if ~self.eyeTracker.calibrate(); return; end
+
+            if ~self.manipulator.establish(self.display); return; end
+            if ~self.manipulator.calibrate(); return; end
+        end
+
+        function run(self)
             for ii = 1:length(self.trials)
                 runTrial(self.trials{ii});
             end

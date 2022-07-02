@@ -24,12 +24,12 @@ background8BitRGB = [0, 0, 0];
 manager = ExperimentManager(screenID, eyeTracker, manipulator, background8BitRGB);
 
 % Add a set of trials (see trials folder)
-manager.addTrial(SingleShapeRingTrial(3, 3, 2, 50));
+manager.addTrial(SingleShapeRingTrial(2, 3, 2, 50));
 % manager.addTrial(SingleShapeRingTrial(3, 3, 2, 50, 90));
-manager.addTrial(SingleShapeRingTrial(3, 3, 8, 50));
+manager.addTrial(SingleShapeRingTrial(2, 3, 8, 50));
 
 % Run the experiment
-manager.run()
+manager.calibrate();
+manager.run();
 manager.close();
 outputData = manager.data;
-sca;

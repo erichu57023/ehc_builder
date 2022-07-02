@@ -7,11 +7,17 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
     methods
         function self = TouchScreenMouseCursor(); end
 
-        function self = establish(self, window)
+        function successFlag = establish(self, display)
             % Establishes a connection with the device
-            self.window = window;
-            [self.xMax, self.yMax] = Screen('WindowSize', self.window);
+            self.window = display.window;
+            self.xMax = display.xMax;
+            self.yMax = display.yMax;
             SetMouse(0, 0, self.window);
+            successFlag = 1;
+        end
+
+        function successFlag = calibrate(self)
+            successFlag = 1;
         end
 
         function state = poll(self)
@@ -22,8 +28,6 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             state = [GetSecs, x, y, any(buttons)];
         end
 
-        function self = close(self)
-            % Closes the connection with the device
-        end
+        function self = close(self); end
     end
 end

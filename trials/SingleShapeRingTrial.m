@@ -82,6 +82,7 @@ classdef SingleShapeRingTrial < TrialInterface
                 self.elements(ii).Shape = self.allowedShapes{shapeIdxList(ii)};
                 self.elements(ii).Location = [xList(ii), yList(ii)];
                 self.elements(ii).Radius = self.targetRadius;
+                self.elements(ii).Color = [255, 255, 255];
                 if shapeIdxList(ii) == targetShapeIdx
                     self.target = self.elements(ii);
                 end

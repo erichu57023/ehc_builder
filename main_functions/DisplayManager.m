@@ -17,7 +17,8 @@ classdef DisplayManager < handle
                 screenID (1,1) {mustBeInteger, mustBePositive}
                 backgroundWeightedRGB (1,3) = [0, 0, 0];
             end
-            Screen('Preference','SkipSyncTests', 1);
+%             Screen('Preference', 'ConserveVRAM', 4096);
+            Screen('Preference', 'SkipSyncTests', 1);
             PsychImaging('PrepareConfiguration');
             PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
             PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
@@ -35,7 +36,6 @@ classdef DisplayManager < handle
             [self.xMax, self.yMax] = Screen('WindowSize', self.window);
             [self.xCenter, self.yCenter] = RectCenter(self.windowRect);
             self.ifi = Screen('GetFlipInterval', self.window);
-            disp(self.ifi)
             Screen('TextFont', self.window, 'Ariel');
             Screen('TextSize', self.window, 50);
             Screen('BlendFunction', self.window, 'GL_ONE', 'GL_DST_ALPHA');
@@ -69,6 +69,8 @@ classdef DisplayManager < handle
         function asyncEnd(self)
             % Blocks until previously scheduled async frame is complete
             Screen('AsyncFlipEnd', self.window);
+            WaitSecs(self.ifi);
+            Screen('Flip', self.window);
         end
 
         function drawElementInCenter(self, element)
@@ -88,12 +90,13 @@ classdef DisplayManager < handle
 
             for ii = 1:length(elements)
                 location = self.centerToScreen(elements(ii).Location);
-                targetRadius = elements(ii).Radius;
+                elementRadius = elements(ii).Radius;
+                elementColor = elements(ii).Color;
 
                 switch elements(ii).ElementType
                     case 'texture'
                         texture = self.textures.(elements(ii).Shape);
-                        self.drawTexture(texture, location, targetRadius);
+                        self.drawTexture(texture, location, elementRadius, elementColor);
                     case 'vertices'
 
                     otherwise
@@ -106,14 +109,15 @@ classdef DisplayManager < handle
         end
 
         function self = close(self)
+            Screen('Close', self.window)
         end
     end
 
     methods (Access = private)
-        function drawTexture(self, texture, location, targetRadius)
-            baseRect = [0, 0, 256, 256] * targetRadius / 100;
+        function drawTexture(self, texture, location, radius, color)
+            baseRect = [0, 0, 256, 256] * radius / 100;
             destRect = CenterRectOnPointd(baseRect, location(1), location(2));
-            Screen('DrawTexture', self.window, texture, [], destRect);
+            Screen('DrawTexture', self.window, texture, [], destRect, [], [], [], color);
         end
 
         function screenCoords = centerToScreen(self, centerCoords)
