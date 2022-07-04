@@ -1,6 +1,5 @@
 classdef NoManipulator < ManipulatorInterface
     properties (Access = private)
-        state
         display
     end
 
@@ -9,7 +8,6 @@ classdef NoManipulator < ManipulatorInterface
 
         function successFlag = establish(self, display)
             self.display = display;
-            self.state = [GetSecs, 0, 0];
             successFlag = true;
         end
 
@@ -17,12 +15,14 @@ classdef NoManipulator < ManipulatorInterface
             successFlag = true;
         end
 
-        function state = poll(self)
-            state = self.state; 
+        function availFlag = available(self)
+            availFlag = true;
         end
 
-        function self = close(self)
-            self.state = nan;
+        function state = poll(self)
+            state = [GetSecs, 0, 0]; 
         end
+
+        function close(self); end
     end
 end

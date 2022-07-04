@@ -13,11 +13,15 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             self.xMax = display.xMax;
             self.yMax = display.yMax;
             SetMouse(0, 0, self.window);
-            successFlag = 1;
+            successFlag = true;
         end
 
         function successFlag = calibrate(self)
-            successFlag = 1;
+            successFlag = true;
+        end
+
+        function availFlag = available(self)
+            availFlag = true;
         end
 
         function state = poll(self)

@@ -81,6 +81,10 @@ classdef EyeLink2 < EyeTrackerInterface
             self.Neye=length(self.EYEnow);
         end
 
+        function availFlag = available(self)
+            availFlag = false;
+        end
+
         function state = poll(self)
             loops = 1; 
             tmpcell = cell(2,1); 

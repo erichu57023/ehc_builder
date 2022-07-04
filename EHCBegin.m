@@ -32,4 +32,6 @@ manager.addTrial(SingleShapeRingTrial(2, 3, 8, 50));
 manager.calibrate();
 manager.run();
 manager.close();
+
+% Save output data
 outputData = manager.data;

@@ -14,6 +14,10 @@ classdef NoEyeTracker < EyeTrackerInterface
 
         function successFlag = calibrate(self)
             successFlag = true;
+        end    
+
+        function successFlag = available(self)
+            successFlag = true;
         end
 
         function state = poll(self)
