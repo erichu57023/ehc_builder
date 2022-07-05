@@ -40,7 +40,7 @@ classdef SingleShapeRingTrial < TrialInterface
             self.axis = axis;
         end
         
-        function self = generate(self)
+        function generate(self)
             % Generates a new trial, produces a list of all visual elements
             % and their locations (relative to the center of screen), and 
             % stores it in self.elements for display.

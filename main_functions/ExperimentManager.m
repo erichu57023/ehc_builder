@@ -37,14 +37,14 @@ classdef ExperimentManager < handle
             self.data.NumTrials = self.data.NumTrials + 1;
         end
 
-        function calibrate(self)
-            self.display.openWindow();
-
+        function successFlag = calibrate(self)
+            successFlag = false;
+            if ~self.display.openWindow(); return; end
             if ~self.eyeTracker.establish(self.display); return; end
             if ~self.eyeTracker.calibrate(); return; end
-
             if ~self.manipulator.establish(self.display); return; end
             if ~self.manipulator.calibrate(); return; end
+            successFlag = true;
         end
 
         function run(self)
@@ -63,45 +63,62 @@ classdef ExperimentManager < handle
                     self.data.TrialData(ii).Targets{jj, 1} = trial.target;
                     self.data.TrialData(ii).Failzones{jj, 1} = trial.failzone;
 
+                    self.display.emptyScreen();
+                    self.display.update();
+
                     % Require the mouse cursor to be on the center target for
                     % 1-3 seconds
-                    startTime = GetSecs;
-                    readySetGo = 1 + 2 * rand;
-                    while (GetSecs - startTime < readySetGo)
-                        % Poll the manipulator
-                        manipulatorState = self.manipulator.poll();
-
-                        % Prime the target in the screen center
-                        lastFrameTime = self.display.asyncReady();
-                        if lastFrameTime > 0
-                            self.display.drawElementInCenter(trial.target);
-                            self.display.drawDotAt(manipulatorState([2,3]));
-                            self.display.updateAsync(lastFrameTime);
+                    if ~isempty(trial.target)
+                        startTime = GetSecs;
+                        readySetGo = 1 + 2 * rand;
+                        while (GetSecs - startTime < readySetGo)
+                            % Poll the manipulator
+                            if self.manipulator.available()
+                                manipulatorState = self.manipulator.poll();
+                            end
+    
+                            % Prime the target in the screen center
+                            lastFrameTime = self.display.asyncReady();
+                            if lastFrameTime > 0
+                                self.display.drawElementInCenter(trial.target);
+                                self.display.drawDotAt(manipulatorState([2,3]));
+                                self.display.updateAsync(lastFrameTime);
+                            end
+                            
+                            % Reset timer if manipulator is not in center target
+                            distFromCenter = norm(manipulatorState([2,3]));
+                            if distFromCenter > trial.target.Radius
+                                startTime = GetSecs;
+                            end
                         end
-                        
-                        % Reset timer if manipulator is not in center target
-                        distFromCenter = norm(manipulatorState([2,3]));
-                        if distFromCenter > trial.target.Radius
-                            startTime = GetSecs;
-                        end
+                        self.display.asyncEnd();
                     end
-                    self.display.asyncEnd();
                     
+                    self.display.emptyScreen();
+                    self.display.update();
+
                     % Play the round
                     startTime = GetSecs;
                     timestamp = 0;
-                    eyeTrace = nan(trial.timeout * 1000, length(self.eyeTracker.poll()));
-                    manipulatorTrace = nan(trial.timeout * 1000, length(self.manipulator.poll()));
-                    traceIdx = 1;
+                    eyeTrackerState = self.eyeTracker.poll();
+                    manipulatorState = self.manipulator.poll();
+                    eyeTrace = nan(trial.timeout * 1000, length(eyeTrackerState));
+                    manipulatorTrace = nan(trial.timeout * 1000, length(manipulatorState));
+                    eyeTraceIdx = 1; manipTraceIdx = 1;
                     while (timestamp < trial.timeout)
                         % Poll the eye tracker
-                        eyeTrackerState = self.eyeTracker.poll();
-                        
+                        if self.eyeTracker.available()
+                            eyeTrackerState = self.eyeTracker.poll();
+                            eyeTrace(eyeTraceIdx, :) = eyeTrackerState;
+                            eyeTraceIdx = eyeTraceIdx + 1;
+                        end
+
                         % Poll the manipulator
-                        manipulatorState = self.manipulator.poll();
-                        eyeTrace(traceIdx, :) = eyeTrackerState;
-                        manipulatorTrace(traceIdx, :) = manipulatorState;
-                        traceIdx = traceIdx + 1;
+                        if self.manipulator.available()
+                            manipulatorState = self.manipulator.poll();
+                            manipulatorTrace(manipTraceIdx, :) = manipulatorState;
+                            manipTraceIdx = manipTraceIdx + 1;
+                        end
 
                         % End if a pass/fail condition is met
                         if trial.check(manipulatorState) ~= 0
@@ -111,6 +128,7 @@ classdef ExperimentManager < handle
                         % Prepare the next frame to draw
                         lastFrameTime = self.display.asyncReady();
                         if lastFrameTime > 0
+                            self.display.drawDotAt(eyeTrackerState([2,3]))
                             self.display.drawDotAt(manipulatorState([2,3]));
                             self.display.drawElements(trial.elements);
                             self.display.updateAsync(lastFrameTime);

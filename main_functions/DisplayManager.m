@@ -17,7 +17,6 @@ classdef DisplayManager < handle
                 screenID (1,1) {mustBeInteger, mustBePositive}
                 backgroundWeightedRGB (1,3) = [0, 0, 0];
             end
-%             Screen('Preference', 'ConserveVRAM', 4096);
             Screen('Preference', 'SkipSyncTests', 1);
             PsychImaging('PrepareConfiguration');
             PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
@@ -29,26 +28,30 @@ classdef DisplayManager < handle
             self.bgColor = backgroundWeightedRGB * (self.white - self.black) + self.black;
         end
 
-        function self = openWindow(self)
+        function successFlag = openWindow(self)
             % Create window and adjust settings
-            
-            [self.window, self.windowRect] = PsychImaging('OpenWindow', self.screen, self.bgColor);
-            [self.xMax, self.yMax] = Screen('WindowSize', self.window);
-            [self.xCenter, self.yCenter] = RectCenter(self.windowRect);
-            self.ifi = Screen('GetFlipInterval', self.window);
-            Screen('TextFont', self.window, 'Ariel');
-            Screen('TextSize', self.window, 50);
-            Screen('BlendFunction', self.window, 'GL_ONE', 'GL_DST_ALPHA');
-            HideCursor(self.window);
-            Priority(MaxPriority(self.window));
-
-            % Load shape textures into window for fast display
-            bitmaps = GenerateShapeBitmaps();
-            shapeNames = fieldnames(bitmaps);
-            for ii = 1:length(shapeNames)
-                self.textures.(shapeNames{ii}) = Screen('MakeTexture', self.window, bitmaps.(shapeNames{ii}));
+            try
+                [self.window, self.windowRect] = PsychImaging('OpenWindow', self.screen, self.bgColor);
+                [self.xMax, self.yMax] = Screen('WindowSize', self.window);
+                [self.xCenter, self.yCenter] = RectCenter(self.windowRect);
+                self.ifi = Screen('GetFlipInterval', self.window);
+                Screen('TextFont', self.window, 'Ariel');
+                Screen('TextSize', self.window, 50);
+                Screen('BlendFunction', self.window, 'GL_ONE', 'GL_DST_ALPHA');
+                HideCursor(self.window);
+                Priority(MaxPriority(self.window));
+    
+                % Load shape textures into window for fast display
+                bitmaps = GenerateShapeBitmaps();
+                shapeNames = fieldnames(bitmaps);
+                for ii = 1:length(shapeNames)
+                    self.textures.(shapeNames{ii}) = Screen('MakeTexture', self.window, bitmaps.(shapeNames{ii}));
+                end
+                Screen('PreloadTextures', self.window);
+                successFlag = true;
+            catch
+                successFlag = false;
             end
-            Screen('PreloadTextures', self.window);
         end
 
         function update(self)
@@ -75,6 +78,7 @@ classdef DisplayManager < handle
 
         function drawElementInCenter(self, element)
             % Draws only the target shape in the center of the screen
+            if isempty(element); return; end
             element.Location = [0, 0];
             self.drawElements(element);
         end
@@ -87,7 +91,8 @@ classdef DisplayManager < handle
         function drawElements(self, elements)
             % Draws a list of elements on the next frame. All strings in
             % the first column of elements must be valid textures.
-
+           
+            if isempty(elements); return; end
             for ii = 1:length(elements)
                 location = self.centerToScreen(elements(ii).Location);
                 elementRadius = elements(ii).Radius;
@@ -109,7 +114,8 @@ classdef DisplayManager < handle
         end
 
         function self = close(self)
-            Screen('Close', self.window)
+            Priority(0);
+            Screen('Close', self.window);
         end
     end
 
