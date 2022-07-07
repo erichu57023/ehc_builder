@@ -24,7 +24,7 @@ classdef PolhemusLiberty < ManipulatorInterface
         function successFlag = establish(self, display)
             self.display = display;
             self.ringIdx = 0;
-            self.ringBuffer = zeros(self.ringSize, 6);
+            self.ringBuffer = zeros(self.ringSize, 7);
             try 
                 % Establish TCP/IP connection 
                 self.client = tcpclient(self.ipAddress, self.tcpPort, 'ConnectTimeout', 5);
@@ -46,7 +46,6 @@ classdef PolhemusLiberty < ManipulatorInterface
         end
 
         function state = poll(self)
-            t = GetSecs;
             state = pollRaw(self);
         end
 
@@ -64,7 +63,7 @@ classdef PolhemusLiberty < ManipulatorInterface
                 stateRaw = [];
                 return
             end
-            stateRaw = typecast(rcvd_bytes(17:end), 'single');
+            stateRaw = [GetSecs, typecast(rcvd_bytes(17:end), 'single')];
             self.ringIdx = self.ringIdx + 1;
             self.ringBuffer(self.ringIdx, :) = stateRaw;
         end
