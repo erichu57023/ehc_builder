@@ -1,4 +1,7 @@
 classdef NoManipulator < ManipulatorInterface
+    properties
+        calibrationFcn
+    end
     properties (Access = private)
         display
     end
@@ -9,6 +12,7 @@ classdef NoManipulator < ManipulatorInterface
         function successFlag = establish(self, display)
             self.display = display;
             successFlag = true;
+            self.calibrationFcn = @(x) x(2:end);
         end
 
         function successFlag = calibrate(self)

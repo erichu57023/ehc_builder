@@ -83,9 +83,15 @@ classdef DisplayManager < handle
             self.drawElements(element);
         end
         
-        function drawDotAt(self, centerCoords)
-            screenCoords = self.centerToScreen(centerCoords);
-            Screen('DrawDots', self.window, screenCoords, 10, self.white, [], 1);
+        function drawDotsFastAt(self, centerCoordsList, sizeList, colorList, relativeTo)
+            arguments
+                self
+                centerCoordsList (:, 2)
+                sizeList(:, 1) = 10 * ones(size(centerCoordsList, 1), 1);
+                colorList (:, 3) = self.white * size(centerCoordsList, 1);
+                relativeTo (1, 2) = [self.xCenter, self.yCenter];
+            end
+            Screen('DrawDots', self.window, centerCoordsList' .* [1; -1], sizeList, colorList', relativeTo, 1);
         end
 
         function drawElements(self, elements)

@@ -1,6 +1,9 @@
 classdef EyeLink2 < EyeTrackerInterface
     % A wrapper class to access and manage EyeLink2 samples
 
+    properties
+        calibrationFcn
+    end
     properties (Access = private)
         state
         display
@@ -68,6 +71,7 @@ classdef EyeLink2 < EyeTrackerInterface
                 Eyelink('NewestFloatSample');
                 EyelinkDoTrackerSetup(self.settings);
                 Eyelink('StartRecording');
+                self.calibrationFcn = @(x) x(2:end);
                 successFlag = true;
             catch
                 successFlag = false;

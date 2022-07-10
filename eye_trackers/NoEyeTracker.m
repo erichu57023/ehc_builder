@@ -1,4 +1,7 @@
 classdef NoEyeTracker < EyeTrackerInterface
+    properties
+        calibrationFcn
+    end
     properties (Access = private)
         state
         display
@@ -10,6 +13,7 @@ classdef NoEyeTracker < EyeTrackerInterface
         function successFlag = establish(self, display)
             self.display = display;
             successFlag = true;
+            self.calibrationFcn = @(x) x(2:end);
         end
 
         function successFlag = calibrate(self)

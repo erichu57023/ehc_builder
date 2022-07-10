@@ -1,4 +1,7 @@
 classdef TouchScreenMouseCursor < ManipulatorInterface
+    properties
+        calibrationFcn
+    end
     properties (Access = private)
         window
         xMax; yMax
@@ -14,6 +17,7 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             self.yMax = display.yMax;
             SetMouse(0, 0, self.window);
             successFlag = true;
+            self.calibrationFcn = @(x) x(2:end);
         end
 
         function successFlag = calibrate(self)
