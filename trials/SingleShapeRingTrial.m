@@ -89,14 +89,14 @@ classdef SingleShapeRingTrial < TrialInterface
             end
         end
 
-        function conditionFlag = check(self, state)
+        function conditionFlag = check(self, stateXYZ)
             % Generates a conditionFlag based on input state. If
             % check passes, returns 1. If check fails, returns -1.
             % Otherwise, return 0. Input XY must be relative to screen 
             % center.
             conditionFlag = 0;
             targetLoc = self.target.Location;
-            distFromTarget = norm(state([2,3]) - targetLoc);
+            distFromTarget = norm(stateXYZ([1,2]) - targetLoc);
             if (distFromTarget <= self.target.Radius) % && state(4)
                 conditionFlag = 1;
             end

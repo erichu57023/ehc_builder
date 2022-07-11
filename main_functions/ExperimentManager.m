@@ -127,7 +127,7 @@ classdef ExperimentManager < handle
                         end
 
                         % End if a pass/fail condition is met
-                        if trial.check(manipRawState) ~= 0
+                        if trial.check(manipCenterXY) ~= 0
                             break
                         end
                         

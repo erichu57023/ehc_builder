@@ -40,35 +40,37 @@ classdef PolhemusLiberty < ManipulatorInterface
             end
         end
 
-        function successFlag = calibrate(self, importCalibration)
+        function successFlag = calibrate(self)
             % Assumes that the YZ plane of the sensor coincides with the XY
             % plane of the manipulator controls. If the optional
             % calibration function is provided, skips calibration.
-            arguments
-                self
-                importCalibration (1, 1) {mustBeA(importCalibration, 'function_handle')} = @(x) 'default'
-            end
-            if ~ischar(importCalibration(zeros(4)))
-                self.calibrationFcn = importCalibration;
+
+            if isfile('manipulator_calibration.mat')
+                cprintf('text', 'Detected previous manipulator calibration, loading...\n')
+                load('manipulator_calibration.mat', 'Date', 'CalibrationFunction');
+                if Date ~= datetime('today')
+                    warning('The provided Polhemus calibration is not from today. Output values may be inaccurate!')
+                end
+                self.calibrationFcn = CalibrationFunction;
                 successFlag = true;
                 return
             end
 
             self.display.update();
             
-            movingColor = [255, 102, 102] / 255;
-            stillColor = [102, 102, 255] / 255;
+            isMovingColor = [102, 102, 255; 255, 102, 102] / 255;
+
             targets = [[-1 0 1 -1 0 1 -1 0 1] * 216.375, -293.6875; ...
                        [1 1 1 0 0 0 -1 -1 -1] * 119.0625, -147.6375];
             sampleMat = hitCalibrationTargets();
             
-            % zColumn should have the smallest variance
-            [~, zColumn] = min(var(sampleMat));
-            zOffset = [0, 0, mean(sampleMat(:, zColumn))];
+            % zColumn should have the smallest range
+            [~, zColumn] = min(range(sampleMat));
 
             % Calculate vectors of XY points relative to center point
             xyColumn = find(1:3 ~= zColumn);
             xyMat = sampleMat(:, xyColumn)';
+            xyzOffset = sampleMat(5, [xyColumn zColumn]);
             xyIn = xyMat(:, [1:4, 6:end]) - xyMat(:, 5);
             xyOut = targets(:, [1:4, 6:end]);
 
@@ -80,8 +82,12 @@ classdef PolhemusLiberty < ManipulatorInterface
             % Calculate final calibration function; zColumn will remain in
             % native sensor units with constant offset subtracted
             xyzLinear(3, 3) = 1;
-            self.calibrationFcn = @(sample) sample([xyColumn zColumn] + 1) * xyzLinear' - zOffset;
+            self.calibrationFcn = @(sample) (sample([xyColumn zColumn] + 1) - xyzOffset) * xyzLinear';
             
+            Date = datetime('today');
+            CalibrationFunction = self.calibrationFcn;
+            save('manipulator_calibration.mat', 'Date', 'CalibrationFunction');
+
             successFlag = true;
 
             function sampleMat = hitCalibrationTargets()
@@ -92,21 +98,20 @@ classdef PolhemusLiberty < ManipulatorInterface
                 % Define a threshold for motion in each axis
                 while true
                     state = self.poll();
-                    lastSecond = self.ringBuffer(:, 1) > (GetSecs - 1);
-
                     lastFrameTime = self.display.asyncReady();
                     if lastFrameTime
-                        self.display.drawDotsFastAt([0, 0; state(2:3)], [63 10], [movingColor; [1 1 1] * self.display.white]);
+                        self.display.drawDotsFastAt([0, 0; state(2:3)], [63 10], [isMovingColor(2, :); [1 1 1] * self.display.white]);
                         self.display.updateAsync(lastFrameTime);
                     end
                     [~, ~, keyCode] = KbCheck();
                     if keyCode(32)
-                        KbReleaseWait;
                         break
                     end
                 end
-                samples = self.ringBuffer(lastSecond, 2:4);
-                varThreshold = 1.25 * var(samples);
+                lastHalfSecond = self.ringBuffer(:, 1) > (GetSecs - 0.5);
+                samples = self.ringBuffer(lastHalfSecond, 2:4);
+                varThreshold = 25 * max(var(samples));
+                KbReleaseWait;
 
                 % Use motion threshold to gather points for each target with
                 % feedback
@@ -115,17 +120,13 @@ classdef PolhemusLiberty < ManipulatorInterface
                     x = targets(1, ii); y = targets(2, ii);
                     while true
                         state = self.poll();
-                        lastSecond = self.ringBuffer(:, 1) > (GetSecs - 1);
-                        samples = self.ringBuffer(lastSecond, 2:4);
-                        isMoving = ~all(var(samples) <= varThreshold);
+                        lastHalfSecond = self.ringBuffer(:, 1) > (GetSecs - 0.5);
+                        samples = self.ringBuffer(lastHalfSecond, 2:4);
+                        isMoving = any(var(samples) > varThreshold);
 
                         lastFrameTime = self.display.asyncReady();
                         if lastFrameTime
-                            if isMoving
-                                self.display.drawDotsFastAt([x, y; state(2:3)], [63 10], [movingColor; [1 1 1] * self.display.white]);
-                            else
-                                self.display.drawDotsFastAt([x, y; state(2:3)], [63 10], [stillColor; [1 1 1] * self.display.white]);
-                            end
+                            self.display.drawDotsFastAt([x, y; state(2:3)], [63 10], [isMovingColor(isMoving + 1, :); [1 1 1] * self.display.white]);
                             self.display.updateAsync(lastFrameTime);
                         end
                         [~, ~, keyCode] = KbCheck();
@@ -136,9 +137,7 @@ classdef PolhemusLiberty < ManipulatorInterface
                     end
                     sampleMat(matIdx, :) = mean(samples);
                     matIdx = matIdx + 1;
-
                 end
-                self.display.asyncEnd();
             end
         end
 
@@ -148,8 +147,8 @@ classdef PolhemusLiberty < ManipulatorInterface
 
         function state = poll(self)
             state = updateInputBuffer(self);
-            if ~state       % Returns most recent complete sample if newest poll is incomplete data
-                state = self.ringBuffer(max(self.ringIdx, 1));
+            if isempty(state)       % Returns most recent complete sample if newest poll is incomplete data
+                state = self.ringBuffer(max(self.ringIdx, 1), :);
             end
         end
 
@@ -162,15 +161,19 @@ classdef PolhemusLiberty < ManipulatorInterface
 
     methods (Access = private)
         function stateRaw = updateInputBuffer(self)
+            stateRaw = [];
             rcvd_str = readline(self.client);
             rcvd_bytes = uint8(char(rcvd_str));
+            if length(rcvd_bytes) ~= 40; return; end
             
-            if length(rcvd_bytes) < 40
+            stateRaw = [GetSecs, 10 * double(typecast(rcvd_bytes(17:28), 'single'))];
+            if length(stateRaw) ~= 4
                 stateRaw = [];
                 return
             end
-            stateRaw = [GetSecs, double(typecast(rcvd_bytes(17:28), 'single'))];
-
+            self.ringIdx = self.ringIdx + 1;
+            self.ringBuffer(self.ringIdx, :) = stateRaw;
+            
               % Test code that uses mouse data instead for debugging
 %             [x, y] = GetMouse(self.display.window);
 %             x = min(x, self.display.xMax) - self.display.xMax/2;

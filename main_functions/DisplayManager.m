@@ -17,7 +17,12 @@ classdef DisplayManager < handle
                 screenID (1,1) {mustBeInteger, mustBePositive}
                 backgroundWeightedRGB (1,3) = [0, 0, 0];
             end
-            Screen('Preference', 'SkipSyncTests', 1);
+            
+            % Higher verbosity increases slow console printouts and may
+            % cause unexpected timing errors
+            Screen('Preference', 'Verbosity', 1);
+            Screen('Preference', 'ConserveVRAM', 4096);
+            Screen('Preference', 'SkipSyncTests', 2);
             PsychImaging('PrepareConfiguration');
             PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
             PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
@@ -72,8 +77,8 @@ classdef DisplayManager < handle
         function asyncEnd(self)
             % Blocks until previously scheduled async frame is complete
             Screen('AsyncFlipEnd', self.window);
-            WaitSecs(self.ifi);
-            Screen('Flip', self.window);
+%             WaitSecs(self.ifi);
+%             Screen('Flip', self.window);
         end
 
         function drawElementInCenter(self, element)
