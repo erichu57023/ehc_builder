@@ -40,9 +40,20 @@ classdef PolhemusLiberty < ManipulatorInterface
             end
         end
 
-        function successFlag = calibrate(self)
+        function successFlag = calibrate(self, importCalibration)
             % Assumes that the YZ plane of the sensor coincides with the XY
-            % plane of the manipulator controls
+            % plane of the manipulator controls. If the optional
+            % calibration function is provided, skips calibration.
+            arguments
+                self
+                importCalibration (1, 1) {mustBeA(importCalibration, 'function_handle')} = @(x) 'default'
+            end
+            if ~ischar(importCalibration(zeros(4)))
+                self.calibrationFcn = importCalibration;
+                successFlag = true;
+                return
+            end
+
             self.display.update();
             
             movingColor = [255, 102, 102] / 255;
