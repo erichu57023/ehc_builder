@@ -18,6 +18,7 @@ classdef DisplayManager < handle
                 backgroundWeightedRGB (1,3) = [0, 0, 0];
             end
             Screen('Preference', 'SkipSyncTests', 1);
+            Screen('Preference', 'Verbosity', 1);
             PsychImaging('PrepareConfiguration');
             PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
             PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
@@ -101,15 +102,19 @@ classdef DisplayManager < handle
             if isempty(elements); return; end
             for ii = 1:length(elements)
                 location = self.centerToScreen(elements(ii).Location);
-                elementRadius = elements(ii).Radius;
-                elementColor = elements(ii).Color;
+                elementColor = elements(ii).Color / 255 * self.white - self.black;
 
                 switch elements(ii).ElementType
                     case 'texture'
                         texture = self.textures.(elements(ii).Shape);
+                        elementRadius = elements(ii).Radius;
                         self.drawTexture(texture, location, elementRadius, elementColor);
-                    case 'vertices'
-
+                    case 'navon'
+                        Screen('TextFont', self.window, 'Consolas');
+                        Screen('TextSize', self.window, elements(ii).FontSize);
+                        Screen('TextStyle', self.window, 0);
+                        bbox = [location - 300, location + 300];
+                        DrawFormattedText(self.window, elements(ii).Text, 'centerblock', 'center', elementColor, [], 0, 0, 1, 0, bbox);
                     otherwise
                 end
             end

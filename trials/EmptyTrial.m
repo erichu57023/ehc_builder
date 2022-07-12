@@ -29,12 +29,12 @@ classdef EmptyTrial < TrialInterface
             self.failzone = struct([]);
         end
 
-        function conditionFlag = check(self, state)
+        function conditionFlag = check(self, manipState)
             % Generates a conditionFlag based on input state. If
             % check passes, returns 1. If check fails, returns -1.
             % Otherwise, return 0. Input XY must be relative to screen 
             % center.
-            conditionFlag = state(4);
+            conditionFlag = manipState(4); % MouseClick
         end
     end
 end
