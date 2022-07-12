@@ -18,7 +18,7 @@ classdef DisplayManager < handle
                 backgroundWeightedRGB (1,3) = [0, 0, 0];
             end
             Screen('Preference', 'SkipSyncTests', 1);
-            Screen('Preference', 'Verbosity', 1);
+            Screen('Preference', 'Verbosity', 0 );
             PsychImaging('PrepareConfiguration');
             PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
             PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
@@ -109,12 +109,12 @@ classdef DisplayManager < handle
                         texture = self.textures.(elements(ii).Shape);
                         elementRadius = elements(ii).Radius;
                         self.drawTexture(texture, location, elementRadius, elementColor);
-                    case 'navon'
-                        Screen('TextFont', self.window, 'Consolas');
+                    case 'text'
+                        Screen('TextFont', self.window, elements(ii).Font);
                         Screen('TextSize', self.window, elements(ii).FontSize);
-                        Screen('TextStyle', self.window, 0);
-                        bbox = [location - 300, location + 300];
-                        DrawFormattedText(self.window, elements(ii).Text, 'centerblock', 'center', elementColor, [], 0, 0, 1, 0, bbox);
+                        bbox = [location - 50, location + 50];
+                        vspacing = elements(ii).VerticalSpacing;
+                        DrawFormattedText(self.window, elements(ii).Text, 'centerblock', 'center', elementColor, [], 0, 0, vspacing, 0, bbox);
                     otherwise
                 end
             end

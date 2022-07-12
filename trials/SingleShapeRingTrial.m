@@ -5,6 +5,7 @@ classdef SingleShapeRingTrial < TrialInterface
     properties
         numRounds
         timeout
+        intro
         elements
         target
         failzone
@@ -17,8 +18,9 @@ classdef SingleShapeRingTrial < TrialInterface
     end
     properties(Constant)
         allowedShapes = {'Circle', 'Triangle', 'Square', 'Cross'};
-        instructions = ['You will see a shape in the center of the screen. To begin, hold your cursor on that shape. ' ...
-            'A number of targets will appear. Touch the target that matches that shape.'];
+        instructions = ['To begin, hold your cursor on the shape.', newline ...
+                        'A number of targets will appear.', newline ...
+                        'Touch the target that matches that shape.'];
     end
 
     methods
@@ -87,6 +89,18 @@ classdef SingleShapeRingTrial < TrialInterface
                     self.target = self.elements(ii);
                 end
             end
+
+            % Change intro screen based on target shape
+            self.intro = self.target;
+            self.intro.Location = [0 0];
+
+            self.intro(2).ElementType = 'text';
+            self.intro(2).Location = [0, 400];
+            self.intro(2).Text = self.instructions;
+            self.intro(2).Color = [255 255 255];
+            self.intro(2).Font = 'Consolas';
+            self.intro(2).FontSize = 40;
+            self.intro(2).VerticalSpacing = 2;
         end
 
         function conditionFlag = check(self, state)
@@ -94,12 +108,10 @@ classdef SingleShapeRingTrial < TrialInterface
             % check passes, returns 1. If check fails, returns -1.
             % Otherwise, return 0. Input XY must be relative to screen 
             % center.
-            conditionFlag = 0;
+
             targetLoc = self.target.Location;
-            distFromTarget = norm(state([2,3]) - targetLoc);
-            if (distFromTarget <= self.target.Radius) % && state(4)
-                conditionFlag = 1;
-            end
+            distFromTarget = norm(state(1:2) - targetLoc);
+            conditionFlag = distFromTarget <= self.target.Radius;
         end
     end
 end

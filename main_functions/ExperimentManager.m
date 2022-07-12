@@ -8,6 +8,9 @@ classdef ExperimentManager < handle
         manipulator
         trials
     end
+    properties (Constant)
+        introTargetRadius = 50;
+    end
 
     methods
         function self = ExperimentManager(screenID, eyeTracker, manipulator, backgroundRGB)     % Init function
@@ -58,6 +61,7 @@ classdef ExperimentManager < handle
             function runTrial(trial)
                 self.data.TrialData(ii).NumRounds = trial.numRounds;
                 self.data.TrialData(ii).Timeout = trial.timeout;
+                self.data.TrialData(ii).Outcomes = zeros(1, trial.numRounds);
 
                 for jj = 1:trial.numRounds
                     % Generate a new round
@@ -65,13 +69,18 @@ classdef ExperimentManager < handle
                     self.data.TrialData(ii).Elements{jj, 1} = trial.elements;
                     self.data.TrialData(ii).Targets{jj, 1} = trial.target;
                     self.data.TrialData(ii).Failzones{jj, 1} = trial.failzone;
-
+                    
                     self.display.emptyScreen();
                     self.display.update();
 
+                    playIntroPhase(); % Provide instructions and perform gaze correction on center target
+                    playTrialPhase(); % Play the trial and record all data
+                end
+
+                function playIntroPhase()
                     % Require the mouse cursor to be on the center target for
                     % 1-3 seconds
-                    if ~isempty(trial.target)
+                    if ~isempty(trial.intro)
                         startTime = GetSecs;
                         readySetGo = 1 + 2 * rand;
                         while (GetSecs - startTime < readySetGo)
@@ -84,23 +93,21 @@ classdef ExperimentManager < handle
                             % Prime the target in the screen center
                             lastFrameTime = self.display.asyncReady();
                             if lastFrameTime > 0
-                                self.display.drawElementInCenter(trial.target);
+                                self.display.drawElements(trial.intro);
                                 self.display.drawDotsFastAt(manipCenterXY(1:2));
                                 self.display.updateAsync(lastFrameTime);
                             end
                             
                             % Reset timer if manipulator is not in center target
                             distFromCenter = norm(manipCenterXY(1:2));
-                            if distFromCenter > trial.target.Radius
+                            if distFromCenter > self.introTargetRadius
                                 startTime = GetSecs;
                             end
                         end
                         self.display.asyncEnd();
                     end
-                    
-                    self.display.emptyScreen();
-                    self.display.update();
-
+                end
+                function playTrialPhase()
                     % Play the round
                     startTime = GetSecs;
                     timestamp = 0;
@@ -127,14 +134,16 @@ classdef ExperimentManager < handle
                         end
 
                         % End if a pass/fail condition is met
-                        if trial.check(manipRawState) ~= 0
+                        outcome = trial.check(manipCenterXY);
+                        if outcome ~= 0
                             break
                         end
                         
                         % Prepare the next frame to draw
                         lastFrameTime = self.display.asyncReady();
                         if lastFrameTime > 0
-                            self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXY(1:2)])
+%                             self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXY(1:2)])
+                            self.display.drawDotsFastAt(manipCenterXY(1:2))
                             self.display.drawElements(trial.elements);
                             self.display.updateAsync(lastFrameTime);
                         end
@@ -144,6 +153,7 @@ classdef ExperimentManager < handle
                     
                     self.data.TrialData(ii).EyeTrackerData{jj, 1} = eyeTrace(~isnan(eyeTrace(:,1)), :);
                     self.data.TrialData(ii).ManipulatorData{jj, 1} = manipulatorTrace(~isnan(manipulatorTrace(:,1)), :);
+                    self.data.TrialData(ii).Outcomes(jj) = outcome;
                 end
             end
         end

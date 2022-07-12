@@ -4,6 +4,7 @@ classdef EmptyTrial < TrialInterface
     properties
         numRounds
         timeout
+        intro
         elements
         target
         failzone
@@ -23,18 +24,18 @@ classdef EmptyTrial < TrialInterface
             % Generates a new trial, produces a list of all visual elements
             % and their locations (relative to the center of screen), and 
             % stores it in self.elements for display.
-
+            self.intro = struct([]);
             self.elements = struct([]);
             self.target = struct([]);
             self.failzone = struct([]);
         end
 
-        function conditionFlag = check(self, manipState)
+        function conditionFlag = check(self)
             % Generates a conditionFlag based on input state. If
             % check passes, returns 1. If check fails, returns -1.
             % Otherwise, return 0. Input XY must be relative to screen 
             % center.
-            conditionFlag = manipState(4); % MouseClick
+            conditionFlag = KbCheck; % Keyboard press
         end
     end
 end
