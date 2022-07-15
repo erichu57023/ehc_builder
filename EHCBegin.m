@@ -16,7 +16,8 @@ eyeTracker = EyeLink2();
 % eyeTracker = NoEyeTracker();
     
 % Define a manipulator (see manipulators folder)
-manipulator = TouchScreenMouseCursor();
+manipulator = PolhemusLiberty();
+% manipulator = TouchScreenMouseCursor();
 
 % Assign a background color as an 8-bit RGB value (0 to 255)
 background8BitRGB = [0, 0, 0];
@@ -25,10 +26,11 @@ background8BitRGB = [0, 0, 0];
 manager = ExperimentManager(screenID, eyeTracker, manipulator, background8BitRGB);
 
 % Add a set of trials (see trials folder)
-manager.addTrial(EmptyTrial(60))
+% manager.addTrial(EmptyTrial(60))
 % manager.addTrial(SingleShapeRingTrial(2, 3, 2, 50));
 % manager.addTrial(SingleShapeRingTrial(3, 3, 2, 50, 90));
-% manager.addTrial(SingleShapeRingTrial(2, 3, 8, 50));
+manager.addTrial(SingleShapeRingTrial(5, 3, 8, 50));
+% manager.addTrial(NavonTask(5, 3, "random"))
 
 % Run the experiment
 if manager.calibrate()

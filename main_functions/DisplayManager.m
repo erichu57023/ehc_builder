@@ -18,7 +18,8 @@ classdef DisplayManager < handle
                 backgroundWeightedRGB (1,3) = [0, 0, 0];
             end
             Screen('Preference', 'SkipSyncTests', 1);
-            Screen('Preference', 'Verbosity', 0 );
+            Screen('Preference', 'Verbosity', 0);
+            Screen('Preference', 'TextRenderer', 1);
             PsychImaging('PrepareConfiguration');
             PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
             PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
@@ -73,8 +74,8 @@ classdef DisplayManager < handle
         function asyncEnd(self)
             % Blocks until previously scheduled async frame is complete
             Screen('AsyncFlipEnd', self.window);
-%             WaitSecs(self.ifi);
-%             Screen('Flip', self.window);
+            WaitSecs(self.ifi);
+            Screen('Flip', self.window);
         end
 
         function drawElementInCenter(self, element)

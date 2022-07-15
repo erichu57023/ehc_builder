@@ -74,32 +74,42 @@ classdef ExperimentManager < handle
                     self.display.update();
 
                     playIntroPhase(); % Provide instructions and perform gaze correction on center target
+                    self.eyeTracker.driftCorrect() % Correct for drift error
                     playTrialPhase(); % Play the trial and record all data
                 end
 
                 function playIntroPhase()
                     % Require the mouse cursor to be on the center target for
                     % 1-3 seconds
+                    manipCenterXYZ = nan(1,3);
+                    eyeCenterXY = nan(1,2);
+
                     if ~isempty(trial.intro)
                         startTime = GetSecs;
                         readySetGo = 1 + 2 * rand;
                         while (GetSecs - startTime < readySetGo)
+                            % Poll the eye tracker
+                            if self.eyeTracker.available()
+                                eyeRawState = self.eyeTracker.poll();
+                                eyeCenterXY = self.eyeTracker.calibrationFcn(eyeRawState);
+                            end
+
                             % Poll the manipulator
                             if self.manipulator.available()
                                 manipRawState = self.manipulator.poll();
-                                manipCenterXY = self.manipulator.calibrationFcn(manipRawState);
+                                manipCenterXYZ = self.manipulator.calibrationFcn(manipRawState);
                             end
     
                             % Prime the target in the screen center
                             lastFrameTime = self.display.asyncReady();
                             if lastFrameTime > 0
                                 self.display.drawElements(trial.intro);
-                                self.display.drawDotsFastAt(manipCenterXY(1:2));
+                                self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXYZ(1:2)]);
                                 self.display.updateAsync(lastFrameTime);
                             end
                             
                             % Reset timer if manipulator is not in center target
-                            distFromCenter = norm(manipCenterXY(1:2));
+                            distFromCenter = norm(manipCenterXYZ(1:2));
                             if distFromCenter > self.introTargetRadius
                                 startTime = GetSecs;
                             end
@@ -116,6 +126,9 @@ classdef ExperimentManager < handle
                     eyeTrace = nan(trial.timeout * 1000, length(eyeRawState));
                     manipulatorTrace = nan(trial.timeout * 1000, length(manipRawState));
                     eyeTraceIdx = 1; manipTraceIdx = 1;
+                    manipCenterXYZ = nan(1,3);
+                    eyeCenterXY = nan(1,2);
+                    
                     while (timestamp < trial.timeout)
                         % Poll the eye tracker
                         if self.eyeTracker.available()
@@ -130,11 +143,11 @@ classdef ExperimentManager < handle
                             manipRawState = self.manipulator.poll();
                             manipulatorTrace(manipTraceIdx, :) = manipRawState;
                             manipTraceIdx = manipTraceIdx + 1;
-                            manipCenterXY = self.manipulator.calibrationFcn(manipRawState);
+                            manipCenterXYZ = self.manipulator.calibrationFcn(manipRawState);
                         end
 
                         % End if a pass/fail condition is met
-                        outcome = trial.check(manipCenterXY);
+                        outcome = trial.check(manipCenterXYZ);
                         if outcome ~= 0
                             break
                         end
@@ -142,8 +155,8 @@ classdef ExperimentManager < handle
                         % Prepare the next frame to draw
                         lastFrameTime = self.display.asyncReady();
                         if lastFrameTime > 0
-%                             self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXY(1:2)])
-                            self.display.drawDotsFastAt(manipCenterXY(1:2))
+                            self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXYZ(1:2)])
+%                             self.display.drawDotsFastAt(manipCenterXYZ(1:2))
                             self.display.drawElements(trial.elements);
                             self.display.updateAsync(lastFrameTime);
                         end

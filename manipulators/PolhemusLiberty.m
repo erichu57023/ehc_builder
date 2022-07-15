@@ -60,8 +60,8 @@ classdef PolhemusLiberty < ManipulatorInterface
             
             isMovingColor = [102, 102, 255; 255, 102, 102] / 255;
 
-            targets = [[-1 0 1 -1 0 1 -1 0 1] * 216.375, -293.6875; ...
-                       [1 1 1 0 0 0 -1 -1 -1] * 119.0625, -147.6375];
+            targets = [[-1 0 1 -1 0 1 -1 0 1] * 216.375; ...
+                       [1 1 1 0 0 0 -1 -1 -1] * 119.0625];
             sampleMat = hitCalibrationTargets();
             
             % zColumn should have the smallest range
@@ -73,7 +73,7 @@ classdef PolhemusLiberty < ManipulatorInterface
             xyzOffset = sampleMat(5, [xyColumn zColumn]);
             xyIn = xyMat(:, [1:4, 6:end]) - xyMat(:, 5);
             xyOut = targets(:, [1:4, 6:end]);
-
+            
             % Calculate 2x2 linear least-squares transform matrix using
             % pseudoinverse (self.xyTransform * xyIn ~~ xyOut). This matrix
             % will transform XY sensor coordinates to center coordinates.
@@ -91,8 +91,8 @@ classdef PolhemusLiberty < ManipulatorInterface
             successFlag = true;
 
             function sampleMat = hitCalibrationTargets()
-                % Returns a 10x3 matrix representing the 3 mean XYZ values for
-                % all 10 targets.
+                % Returns a 9x3 matrix representing the 3 mean XYZ values for
+                % all 9 targets.
                 
                 cprintf('RED*','Press SPACE when each target is covered and finger is still.\n');
                 % Define a threshold for motion in each axis
@@ -119,14 +119,14 @@ classdef PolhemusLiberty < ManipulatorInterface
                 for ii = 1:length(targets)
                     x = targets(1, ii); y = targets(2, ii);
                     while true
-                        state = self.poll();
+                        self.poll();
                         lastHalfSecond = self.ringBuffer(:, 1) > (GetSecs - 0.5);
                         samples = self.ringBuffer(lastHalfSecond, 2:4);
                         isMoving = any(var(samples) > varThreshold);
 
                         lastFrameTime = self.display.asyncReady();
                         if lastFrameTime
-                            self.display.drawDotsFastAt([x, y; state(2:3)], [63 10], [isMovingColor(isMoving + 1, :); [1 1 1] * self.display.white]);
+                            self.display.drawDotsFastAt([x, y], 63, isMovingColor(isMoving + 1, :));
                             self.display.updateAsync(lastFrameTime);
                         end
                         [~, ~, keyCode] = KbCheck();

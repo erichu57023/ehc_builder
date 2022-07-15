@@ -8,6 +8,6 @@ function GenerateNavonLetters()
         fgetl(fileID);
     end
     
-    save("navon_letters.mat", 'letters')
+    save("helper_functions/navon_letters.mat", 'letters');
     fclose(fileID);
 end

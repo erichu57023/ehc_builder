@@ -51,6 +51,10 @@ classdef NavonTask < TrialInterface
             if length(self.allowedLetters) < 3
                 error('NavonTask: must provide at least 3 unique allowed letters');
             end
+
+            if ~isfile("navon_letters.mat")
+                GenerateNavonLetters();
+            end
             self.letterText = load("navon_letters.mat").letters;
 
             self.intro(1).ElementType = 'text';

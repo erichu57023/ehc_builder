@@ -5,9 +5,9 @@ classdef EyeLink2 < EyeTrackerInterface
         calibrationFcn
     end
     properties (Access = private)
-        state
         display
         settings
+        xCorr; yCorr;
     end
 
     methods
@@ -18,7 +18,7 @@ classdef EyeLink2 < EyeTrackerInterface
             if (Eyelink('Initialize') ~= 0)
 	            disp('Problem initializing Eyelink.');
                 sca;
-	            return;
+	            return
             end
             self.display = display;
             self.settings = EyelinkInitDefaults(display.window);
@@ -30,15 +30,16 @@ classdef EyeLink2 < EyeTrackerInterface
                 return; 
             end
 
-            Eyelink('command','screen_pixel_coords = %d, %d, %d, %d', 0, 0, display.xMax-1, display.yMax-1);
-            Eyelink('message','DISPLAY_COORDS %d, %d, %d, %d', 0, 0, display.xMax-1, display.yMax-1);
+            Eyelink('Command','screen_pixel_coords = %d, %d, %d, %d', 0, 0, display.xMax-1, display.yMax-1);
+            Eyelink('Message','DISPLAY_COORDS %d, %d, %d, %d', 0, 0, display.xMax-1, display.yMax-1);
 
-            Eyelink('command',sprintf('calibration_area_proportion = %f %f',.35,.35))
-            Eyelink('command',sprintf('validation_area_proportion = %f %f',.3,.3))
+            Eyelink('Command',sprintf('calibration_area_proportion = %f %f',.35,.35));
+            Eyelink('Command',sprintf('validation_area_proportion = %f %f',.3,.3));
             
-            Eyelink('command','calibration_type = HV13');
-            Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT');
-            Eyelink('command', 'link_sample_data  = LEFT,RIGHT,GAZE,AREA');
+            Eyelink('Command','calibration_type = HV13');
+            Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT');
+            Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,AREA');
+            Eyelink('Command', sprintf('on-line_dcorr_refposn  = %u %u', self.display.xCenter, self.display.yCenter));
 
             % make sure we're still connected.
             if Eyelink('IsConnected') ~= 1 
@@ -72,6 +73,7 @@ classdef EyeLink2 < EyeTrackerInterface
                 EyelinkDoTrackerSetup(self.settings);
                 Eyelink('StartRecording');
                 self.calibrationFcn = @(x) x(2:end);
+                self.xCorr = 0; self.yCorr = 0;
                 successFlag = true;
             catch
                 successFlag = false;
@@ -86,9 +88,16 @@ classdef EyeLink2 < EyeTrackerInterface
             sample = Eyelink('NewestFloatSample');
             x = sample.gx(sample.gx ~= -32768); 
             y = sample.gy(sample.gx ~= -32768);
-            x = mean(x) - self.display.xMax/2;
-            y = -mean(y) + self.display.yMax/2;
+            x = mean(x) - self.display.xMax/2 - self.xCorr;
+            y = -mean(y) + self.display.yMax/2 - self.yCorr;
             state = [GetSecs, x, y];
+        end
+
+        function driftCorrect(self)
+            state = self.poll();
+            self.xCorr = state(2);
+            self.yCorr = state(3);
+%             Eyelink('Command', 'on-line_dcorr_trigger');
         end
 
         function self = close(self)
