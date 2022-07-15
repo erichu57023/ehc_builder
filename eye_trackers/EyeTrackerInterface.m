@@ -7,6 +7,7 @@ classdef (Abstract) EyeTrackerInterface < handle
         calibrate
         available
         poll
+        driftCorrect
         close
     end
 end

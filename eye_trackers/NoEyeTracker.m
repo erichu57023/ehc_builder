@@ -25,9 +25,11 @@ classdef NoEyeTracker < EyeTrackerInterface
         end
 
         function state = poll(self)
-            self.state = [GetSecs, 0, 0];
+            self.state = [GetSecs, nan, nan];
             state = self.state; 
         end
+
+        function driftCorrect(self); end
 
         function self = close(self); end
     end

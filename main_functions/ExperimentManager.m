@@ -6,23 +6,24 @@ classdef ExperimentManager < handle
         display
         eyeTracker
         manipulator
+        filename
         trials
-    end
-    properties (Constant)
         introTargetRadius = 50;
     end
 
     methods
-        function self = ExperimentManager(screenID, eyeTracker, manipulator, backgroundRGB)     % Init function
+        function self = ExperimentManager(screenID, eyeTracker, manipulator, filename, backgroundRGB)     % Init function
             arguments
                 screenID (1,1) {mustBeInteger, mustBeNonnegative}
                 eyeTracker (1,1) {mustBeA(eyeTracker, 'EyeTrackerInterface')}
                 manipulator (1,1) {mustBeA(manipulator, 'ManipulatorInterface')}
+                filename {mustBeText}
                 backgroundRGB (1,3) {mustBeInteger, mustBeNonnegative, mustBeLessThan(backgroundRGB, 256)} = [0, 0, 0];
             end
             self.display = DisplayManager(screenID, backgroundRGB/255);
             self.eyeTracker = eyeTracker;
             self.manipulator = manipulator;
+            self.filename = filename;
             self.trials = {};
 
             self.data.Display = self.display;
@@ -77,6 +78,8 @@ classdef ExperimentManager < handle
                     self.eyeTracker.driftCorrect() % Correct for drift error
                     playTrialPhase(); % Play the trial and record all data
                 end
+                data = self.data;
+                save(self.filename, 'data');
 
                 function playIntroPhase()
                     % Require the mouse cursor to be on the center target for
@@ -117,6 +120,7 @@ classdef ExperimentManager < handle
                         self.display.asyncEnd();
                     end
                 end
+
                 function playTrialPhase()
                     % Play the round
                     startTime = GetSecs;
