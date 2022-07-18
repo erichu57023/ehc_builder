@@ -60,8 +60,8 @@ classdef PolhemusLiberty < ManipulatorInterface
             
             isMovingColor = [102, 102, 255; 255, 102, 102] / 255;
 
-            targets = [[-1 0 1 -1 0 1 -1 0 1] * 216.375; ...
-                       [1 1 1 0 0 0 -1 -1 -1] * 119.0625];
+            targets = [[-1 0 1 -1 0 1 -1 0 1] * 324.5625; ...
+                       [1 1 1 0 0 0 -1 -1 -1] * 178.5938];
             sampleMat = hitCalibrationTargets();
             
             % zColumn should have the smallest range
@@ -97,11 +97,10 @@ classdef PolhemusLiberty < ManipulatorInterface
                 cprintf('RED*','Press SPACE when each target is covered and finger is still.\n');
                 % Define a threshold for motion in each axis
                 while true
-                    state = self.poll();
-                    lastFrameTime = self.display.asyncReady();
-                    if lastFrameTime
-                        self.display.drawDotsFastAt([0, 0; state(2:3)], [63 10], [isMovingColor(2, :); [1 1 1] * self.display.white]);
-                        self.display.updateAsync(lastFrameTime);
+                    self.poll();
+                    if self.display.asyncReady()
+                        self.display.drawDotsFastAt([0, 0], 63, isMovingColor(2, :));
+                        self.display.updateAsync();
                     end
                     [~, ~, keyCode] = KbCheck();
                     if keyCode(32)
@@ -124,10 +123,9 @@ classdef PolhemusLiberty < ManipulatorInterface
                         samples = self.ringBuffer(lastHalfSecond, 2:4);
                         isMoving = any(var(samples) > varThreshold);
 
-                        lastFrameTime = self.display.asyncReady();
-                        if lastFrameTime
+                        if self.display.asyncReady()
                             self.display.drawDotsFastAt([x, y], 63, isMovingColor(isMoving + 1, :));
-                            self.display.updateAsync(lastFrameTime);
+                            self.display.updateAsync();
                         end
                         [~, ~, keyCode] = KbCheck();
                         if (keyCode(32) && ~isMoving)

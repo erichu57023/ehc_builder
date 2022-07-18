@@ -7,7 +7,7 @@ classdef EyeLink2 < EyeTrackerInterface
     properties (Access = private)
         display
         settings
-        xCorr; yCorr;
+%         xCorr; yCorr;
     end
 
     methods
@@ -39,7 +39,10 @@ classdef EyeLink2 < EyeTrackerInterface
             Eyelink('Command','calibration_type = HV13');
             Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT');
             Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,AREA');
-            Eyelink('Command', sprintf('on-line_dcorr_refposn  = %u %u', self.display.xCenter, self.display.yCenter));
+
+            Eyelink('Command', 'drift_correct_cr_disable = OFF');
+            Eyelink('Command', sprintf('online_dcorr_refposn  %u %u', self.display.xCenter, self.display.yCenter));
+
 
             % make sure we're still connected.
             if Eyelink('IsConnected') ~= 1 
@@ -73,7 +76,7 @@ classdef EyeLink2 < EyeTrackerInterface
                 EyelinkDoTrackerSetup(self.settings);
                 Eyelink('StartRecording');
                 self.calibrationFcn = @(x) x(2:end);
-                self.xCorr = 0; self.yCorr = 0;
+%                 self.xCorr = 0; self.yCorr = 0;
                 successFlag = true;
             catch
                 successFlag = false;
@@ -88,16 +91,16 @@ classdef EyeLink2 < EyeTrackerInterface
             sample = Eyelink('NewestFloatSample');
             x = sample.gx(sample.gx ~= -32768); 
             y = sample.gy(sample.gx ~= -32768);
-            x = mean(x) - self.display.xMax/2 - self.xCorr;
-            y = -mean(y) + self.display.yMax/2 - self.yCorr;
+            x = mean(x) - self.display.xMax/2;
+            y = -mean(y) + self.display.yMax/2;
             state = [GetSecs, x, y];
         end
 
         function driftCorrect(self)
-            state = self.poll();
-            self.xCorr = state(2);
-            self.yCorr = state(3);
-%             Eyelink('Command', 'on-line_dcorr_trigger');
+%             state = self.poll();
+%             self.xCorr = state(2);
+%             self.yCorr = state(3);
+            Eyelink('Command', 'online_dcorr_trigger');
         end
 
         function self = close(self)

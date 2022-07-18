@@ -62,9 +62,9 @@ classdef DisplayManager < handle
             Screen('Flip', self.window);
         end
 
-        function updateAsync(self, t)
+        function updateAsync(self)
             % Queues the next frame of the screen asynchronously
-            Screen('AsyncFlipBegin', self.window, t + self.ifi/2);
+            Screen('AsyncFlipBegin', self.window, GetSecs + self.ifi/2);
         end
 
         function ready = asyncReady(self)

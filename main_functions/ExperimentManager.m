@@ -104,11 +104,10 @@ classdef ExperimentManager < handle
                             end
     
                             % Prime the target in the screen center
-                            lastFrameTime = self.display.asyncReady();
-                            if lastFrameTime > 0
+                            if self.display.asyncReady() > 0
                                 self.display.drawElements(trial.intro);
-                                self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXYZ(1:2)]);
-                                self.display.updateAsync(lastFrameTime);
+                                self.display.drawDotsFastAt([manipCenterXYZ(1:2)]);
+                                self.display.updateAsync();
                             end
                             
                             % Reset timer if manipulator is not in center target
@@ -117,7 +116,7 @@ classdef ExperimentManager < handle
                                 startTime = GetSecs;
                             end
                         end
-                        self.display.asyncEnd();
+%                         self.display.asyncEnd();
                     end
                 end
 
@@ -157,16 +156,15 @@ classdef ExperimentManager < handle
                         end
                         
                         % Prepare the next frame to draw
-                        lastFrameTime = self.display.asyncReady();
-                        if lastFrameTime > 0
-                            self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXYZ(1:2)])
-%                             self.display.drawDotsFastAt(manipCenterXYZ(1:2))
+                        if self.display.asyncReady() > 0
+%                             self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXYZ(1:2)])
+                            self.display.drawDotsFastAt(manipCenterXYZ(1:2))
                             self.display.drawElements(trial.elements);
-                            self.display.updateAsync(lastFrameTime);
+                            self.display.updateAsync();
                         end
                         timestamp = GetSecs - startTime;
                     end
-                    self.display.asyncEnd();
+%                     self.display.asyncEnd();
                     
                     self.data.TrialData(ii).EyeTrackerData{jj, 1} = eyeTrace(~isnan(eyeTrace(:,1)), :);
                     self.data.TrialData(ii).ManipulatorData{jj, 1} = manipulatorTrace(~isnan(manipulatorTrace(:,1)), :);
@@ -178,6 +176,7 @@ classdef ExperimentManager < handle
         function close(self)
             self.eyeTracker.close();
             self.manipulator.close();
+            self.display.asyncEnd();
             self.display.close();
         end
     end
