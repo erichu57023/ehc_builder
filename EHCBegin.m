@@ -29,11 +29,10 @@ background8BitRGB = [0, 0, 0];
 manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, background8BitRGB);
 
 % Add a set of trials (see trials folder)
-% manager.addTrial(EmptyTrial(60))
-manager.addTrial(SingleShapeRingTrial(2, 3, 2, 50));
-% manager.addTrial(SingleShapeRingTrial(3, 3, 2, 50, 90));
-% manager.addTrial(SingleShapeRingTrial(5, 3, 8, 50));
-manager.addTrial(NavonTask(2, 3, "random", 'hqx'))
+% manager.addTrial(EmptyTrial(60));
+% manager.addTrial(SingleShapeRingTrial(5, 3, 8, 25));
+% manager.addTrial(NavonTask(2, 3, "random", 'hqx'))
+manager.addTrial(TraceShapeTrial(5, 10, 'Random', 200))
 
 % Run the experiment
 if manager.calibrate()

@@ -1,4 +1,4 @@
-function bitmaps = GenerateShapeBitmaps()
+function [bitmaps, vertices] = GenerateShapeBitmaps()
     % GENERATESHAPEBITMAPS - Generates bitmaps of predefined shapes for use
     % in drawing textures. Add to this file to include other shapes. Shapes
     % are defined by the pixel coordinates of their vertices, and are
@@ -17,29 +17,33 @@ function bitmaps = GenerateShapeBitmaps()
     function GenerateCircle()
         x = r * cosd(0:359);
         y = r * sind(0:359);
-        circle = bitmap256([x' y']);
+        [circle, verts] = bitmap256([x' y']);
         bitmaps.Circle = circle;
+        vertices.Circle = verts;
     end
 
     function GenerateTriangle()
         verts = nsidedpoly(3).Vertices;
-        triangle = bitmap256(verts);
+        [triangle, verts] = bitmap256(verts);
         bitmaps.Triangle = triangle;
+        vertices.Triangle = verts;
     end
 
     function GenerateSquare()
         verts = nsidedpoly(4).Vertices;
-        square = bitmap256(verts);
+        [square, verts] = bitmap256(verts);
         bitmaps.Square = square;
+        vertices.Square = verts;
     end
 
     function GenerateCross()
         verts = [1,3; 1,1; 3,1; 3,-1; 1,-1; 1,-3; -1,-3; -1,-1; -3,-1; -3,1; -1,1; -1,3];
-        cross = bitmap256(verts);
+        [cross, verts] = bitmap256(verts);
         bitmaps.Cross = cross;
+        vertices.Cross = verts;
     end
 
-    function out = bitmap256(vertices)
+    function [bmp, vrt] = bitmap256(vertices)
         % Generates a 256x256 bitmap of the polygon defined by vertices, an
         % nx2 matrix of pixel coordinates. Output shapes are normalized to
         % the area of a circle of radius 50, and vertically flipped to
@@ -50,11 +54,12 @@ function bitmaps = GenerateShapeBitmaps()
         norm = sqrt(polyarea(x, y) / circleArea);
         x_corrected = x/norm + 128;
         y_corrected = -y/norm + 128;
+        vrt = [x, y] ./ norm;
 
         mask = poly2mask(x_corrected, y_corrected, 256, 256);
         lum = double(mask);
         alpha = mask * 255;
-        out(:, :, 1) = lum;
-        out(:, :, 2) = alpha;
+        bmp(:, :, 1) = lum;
+        bmp(:, :, 2) = alpha;
     end
 end

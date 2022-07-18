@@ -78,8 +78,8 @@ classdef ExperimentManager < handle
                     self.eyeTracker.driftCorrect() % Correct for drift error
                     playTrialPhase(); % Play the trial and record all data
                 end
-                data = self.data;
-                save(self.filename, 'data');
+                Data = self.data;
+                save(self.filename, 'Data');
 
                 function playIntroPhase()
                     % Require the mouse cursor to be on the center target for

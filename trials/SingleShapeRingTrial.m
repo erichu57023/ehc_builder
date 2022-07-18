@@ -30,7 +30,7 @@ classdef SingleShapeRingTrial < TrialInterface
                 numRounds (1,1) {mustBeInteger, mustBePositive};
                 timeout (1,1) {mustBeNonnegative};
                 numTargets (1,1) {mustBeInteger, mustBePositive};
-                targetRadius (1,1) {mustBeInteger, mustBePositive} = 50
+                targetRadius (1,1) {mustBeInteger, mustBePositive} = 25
                 axis (1,1) {mustBeInteger, mustBeNonnegative} = 0
                 distFromCenter (1,1) {mustBeInteger, mustBeGreaterThan(distFromCenter, targetRadius)} = 200
             end

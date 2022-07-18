@@ -9,6 +9,7 @@ classdef DisplayManager < handle
 
     properties (Access = private)
         textures
+        vertices
     end
 
     methods
@@ -44,7 +45,7 @@ classdef DisplayManager < handle
                 Priority(MaxPriority(self.window));
     
                 % Load shape textures into window for fast display
-                bitmaps = GenerateShapeBitmaps();
+                [bitmaps, self.vertices]= GenerateShapeBitmaps();
                 shapeNames = fieldnames(bitmaps);
                 for ii = 1:length(shapeNames)
                     self.textures.(shapeNames{ii}) = Screen('MakeTexture', self.window, bitmaps.(shapeNames{ii}));
@@ -110,13 +111,23 @@ classdef DisplayManager < handle
                         texture = self.textures.(elements(ii).Shape);
                         elementRadius = elements(ii).Radius;
                         self.drawTexture(texture, location, elementRadius, elementColor);
+                    
                     case 'text'
-                        Screen('TextFont', self.window, elements(ii).Font);
-                        Screen('TextSize', self.window, elements(ii).FontSize);
-                        bbox = [location - 50, location + 50];
-                        vspacing = elements(ii).VerticalSpacing;
-                        DrawFormattedText(self.window, elements(ii).Text, 'centerblock', 'center', elementColor, [], 0, 0, vspacing, 0, bbox);
-                    otherwise
+                        text = elements(ii).Text;
+                        font = elements(ii).Font;
+                        fontSize = elements(ii).FontSize;
+                        vSpacing = elements(ii).VerticalSpacing;
+                        self.drawText(text, location, elementColor, font, fontSize, vSpacing);
+                    
+                    case 'framepoly'
+                        shape = elements(ii).Shape;
+                        elementRadius = elements(ii).Radius;
+                        lineWidth = elements(ii).LineWidth;
+                        if strcmp(shape, 'Circle')
+                            self.drawFrameCircle(location, elementRadius, elementColor, lineWidth);
+                        else
+                            self.drawFramePoly(self.vertices.(shape), elementRadius, elementColor, lineWidth);
+                        end
                 end
             end
         end
@@ -126,16 +137,34 @@ classdef DisplayManager < handle
         end
 
         function self = close(self)
-            Priority(0);
             Screen('Close', self.window);
+            Priority(0);
         end
     end
 
     methods (Access = private)
         function drawTexture(self, texture, location, radius, color)
-            baseRect = [0, 0, 256, 256] * radius / 100;
+            baseRect = [0, 0, 256, 256] * radius / 50;
             destRect = CenterRectOnPointd(baseRect, location(1), location(2));
             Screen('DrawTexture', self.window, texture, [], destRect, [], [], [], color);
+        end
+
+        function drawText(self, text, location, color, font, fontSize, vSpacing)
+            Screen('TextFont', self.window, font);
+            Screen('TextSize', self.window, fontSize);
+            bbox = [location - 50, location + 50];
+            DrawFormattedText(self.window, text, 'centerblock', 'center', color, [], 0, 0, vSpacing, 0, bbox);
+        end
+
+        function drawFrameCircle(self, location, radius, color, lineWidth)
+            baseRect = [0, 0, 2, 2] * radius;
+            destRect = CenterRectOnPointd(baseRect, location(1), location(2));
+            Screen('FrameOval', self.window, color, destRect, lineWidth, lineWidth)
+        end
+
+        function drawFramePoly(self, vertices, radius, color, lineWidth)
+            vertsCorrected = self.centerToScreen(vertices .* radius / 50);
+            Screen('FramePoly', self.window, color, vertsCorrected, lineWidth);
         end
 
         function screenCoords = centerToScreen(self, centerCoords)
