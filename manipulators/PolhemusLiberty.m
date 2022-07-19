@@ -6,21 +6,24 @@ classdef PolhemusLiberty < ManipulatorInterface
         display
         ipAddress
         tcpPort
+        calibrationScale
         client
         tableLevel
         ringBuffer; ringIdx; ringSize
     end
 
     methods
-        function self = PolhemusLiberty(ipAddress, tcpPort, bufferSize)
+        function self = PolhemusLiberty(ipAddress, tcpPort, bufferSize, calibrationScale)
             arguments
                 ipAddress {mustBeTextScalar} = 'localhost';
-                tcpPort {mustBeInteger, mustBeNonnegative} = 7234;
-                bufferSize {mustBeInteger, mustBePositive} = 500;
+                tcpPort (1,1) {mustBeInteger, mustBeNonnegative} = 7234;
+                bufferSize (1,1) {mustBeInteger, mustBePositive} = 500;
+                calibrationScale (1,1) {mustBeFloat} = 0.5
             end
             self.ipAddress = ipAddress;
             self.tcpPort = tcpPort;
             self.ringSize = bufferSize;
+            self.calibrationScale = calibrationScale;
             self.client = [];
         end
 
@@ -60,8 +63,8 @@ classdef PolhemusLiberty < ManipulatorInterface
             
             isMovingColor = [102, 102, 255; 255, 102, 102] / 255;
 
-            targets = [[-1 0 1 -1 0 1 -1 0 1] * 324.5625; ...
-                       [1 1 1 0 0 0 -1 -1 -1] * 178.5938];
+            targets = [[-1 0 1 -1 0 1 -1 0 1] * self.display.xCenter * self.calibrationScale; ...
+                       [1 1 1 0 0 0 -1 -1 -1] * self.display.yCenter * self.calibrationScale];
             sampleMat = hitCalibrationTargets();
             
             % zColumn should have the smallest range

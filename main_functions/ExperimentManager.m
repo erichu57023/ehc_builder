@@ -1,4 +1,19 @@
 classdef ExperimentManager < handle
+% EXPERIMENTMANAGER A centralized manager for EHC experiments. This function handles setup and 
+% calibration for any eye trackers or manipulators, and provides a main loop for coordinating trials 
+% with data collection and display updates.
+%
+% Properties:
+%    data (struct) - Stores all experiment data
+%
+% Methods:
+%    addTrial - Adds a trial to the ongoing experiment
+%    calibrate - Connects and calibrates designated hardware
+%    run - Plays each trial in the order they were added
+%    close - Closes all connections and cleans up the experiment
+%
+% See also: DISPLAYMANAGER, EYETRACKERINTERFACE, MANIPULATORINTERFACE, TRIALINTERFACE
+
     properties
         data = struct
     end
@@ -20,6 +35,14 @@ classdef ExperimentManager < handle
                 filename {mustBeText}
                 backgroundRGB (1,3) {mustBeInteger, mustBeNonnegative, mustBeLessThan(backgroundRGB, 256)} = [0, 0, 0];
             end
+            % Constructs an ExperimentManager instance.
+            % Inputs:
+            %    screenID - The ID of the screen to display to, as returned by PsychToolbox
+            %    eyeTracker - An instance of EyeTrackerInterface
+            %    manipulator - An instance of ManipulatorInterface
+            %    filename - A filepath to which output data will be saved.
+            %    backgroundRGB (optional) - An RGB triplet defining the background color
+
             self.display = DisplayManager(screenID, backgroundRGB/255);
             self.eyeTracker = eyeTracker;
             self.manipulator = manipulator;
@@ -37,11 +60,20 @@ classdef ExperimentManager < handle
                 self
                 trial (1,1) {mustBeA(trial, 'TrialInterface')}
             end
+            % Adds a trial to the end of the trial queue. 
+            % Inputs:
+            %    trial - An instance of TrialInterface
+
             self.trials{size(self.trials,2) + 1} = trial;
             self.data.NumTrials = self.data.NumTrials + 1;
+            
         end
 
         function successFlag = calibrate(self)
+            % Initializes display and hardware interfaces, and runs all calibration routines
+            % Outputs:
+            %    successFlag - Returns true if all calibrations completed without error
+
             successFlag = false;
             if ~self.display.openWindow(); return; end
             if ~self.eyeTracker.establish(self.display); return; end
@@ -55,39 +87,62 @@ classdef ExperimentManager < handle
         end
 
         function run(self)
+            % Runs each trial in the order they were added, using the following process:
+            % 1) Ask the trial to generate a series of on-screen elements, target and fail zones,
+            % and an optional intro screen.
+            % 2) Play the intro screen, which requires the manipulator to be in a defined
+            % position, and drift-correct the eye tracker on that position
+            % 3) Play the trial, displaying all elements on screen, collecting eye and manipulator 
+            % data each loop, and passing that into the trial object to check for pass/fail
+            % conditions
+            % 4) Saves data to the output file after completion of each trial
+            
             for ii = 1:length(self.trials)
                 runTrial(self.trials{ii});
             end
 
             function runTrial(trial)
+                % Runs a single trial defined by TrialInterface
+
                 self.data.TrialData(ii).NumRounds = trial.numRounds;
                 self.data.TrialData(ii).Timeout = trial.timeout;
                 self.data.TrialData(ii).Outcomes = zeros(1, trial.numRounds);
 
                 for jj = 1:trial.numRounds
-                    % Generate a new round
+                    % Generate a new round, which populates the instance properties of the
+                    % Trial object with new elements
                     trial.generate();
                     self.data.TrialData(ii).Elements{jj, 1} = trial.elements;
                     self.data.TrialData(ii).Targets{jj, 1} = trial.target;
                     self.data.TrialData(ii).Failzones{jj, 1} = trial.failzone;
                     
+                    % Clear the display
                     self.display.emptyScreen();
                     self.display.update();
 
-                    playIntroPhase(); % Provide instructions and perform gaze correction on center target
-                    self.eyeTracker.driftCorrect() % Correct for drift error
-                    playTrialPhase(); % Play the trial and record all data
+                    % Provide instructions and perform gaze correction on center target
+                    playIntroPhase(); 
+
+                    % Correct for error in eye tracking data due to drift
+                    self.eyeTracker.driftCorrect() 
+
+                    % Play the trial and record all data
+                    playTrialPhase(); 
                 end
+
+                % Save data for each completed trial during runtime
                 Data = self.data;
                 save(self.filename, 'Data');
 
                 function playIntroPhase()
-                    % Require the mouse cursor to be on the center target for
-                    % 1-3 seconds
+                    % Display trial instructions and perform gaze correction on center target
+                    
                     manipCenterXYZ = nan(1,3);
                     eyeCenterXY = nan(1,2);
 
                     if ~isempty(trial.intro)
+                        % Require the mouse cursor to be on the center target for 1-3
+                        % seconds, randomized to avoid prediction
                         startTime = GetSecs;
                         readySetGo = 1 + 2 * rand;
                         while (GetSecs - startTime < readySetGo)
