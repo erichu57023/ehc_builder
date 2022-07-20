@@ -1,4 +1,17 @@
 classdef NoEyeTracker < EyeTrackerInterface
+% NOEYETRACKER A dummy implementation for use when no eye tracker is required for the experiment.
+%
+% PROPERTIES:
+%    calibrationFcn - Simply strips the timestamps from the raw data.
+%
+% METHODS:
+%    establish - Does nothing.
+%    calibrate - Does nothing.
+%    available - Does nothing.
+%    poll - Always returns [timestamp, nan, nan]
+%    driftCorrect - Does nothing.
+%    close - Does nothing.
+
     properties
         calibrationFcn
     end

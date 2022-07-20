@@ -41,7 +41,7 @@ classdef ExperimentManager < handle
             %    eyeTracker - An instance of EyeTrackerInterface
             %    manipulator - An instance of ManipulatorInterface
             %    filename - A filepath to which output data will be saved.
-            %    backgroundRGB (optional) - An RGB triplet defining the background color
+            %    backgroundRGB - An RGB triplet defining the background color
 
             self.display = DisplayManager(screenID, backgroundRGB/255);
             self.eyeTracker = eyeTracker;

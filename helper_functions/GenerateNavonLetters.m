@@ -1,4 +1,7 @@
 function GenerateNavonLetters()
+% GENERATENAVONLETTERS Creates 9x7 Navon strings for each letter in the English alphabet, based on
+% navon_letters.txt, and saves it in a file called navon_letters.mat.
+    
     fileID = fopen('navon_letters.txt');
     for ii = 1:26
         letters{ii} = '';

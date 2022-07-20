@@ -1,4 +1,16 @@
 classdef TouchScreenMouseCursor < ManipulatorInterface
+% TOUCHSCREENMOUSECURSOR A wrapper class representing an interface for a touch screen or mouse.
+%
+% PROPERTIES:
+%    calibrationFcn - Simply strips the timestamps from the raw data.
+%
+% METHODS:
+%    establish - Sets the mouse position to the active display window.
+%    calibrate - Does nothing.
+%    available - Does nothing.
+%    poll - Returns the current position of the mouse, corrected to center coordinates.
+%    close - Does nothing.
+    
     properties
         calibrationFcn
     end
