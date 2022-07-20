@@ -37,7 +37,7 @@ classdef TraceShapeTrial < TrialInterface
             self.timeout = timeout;
             self.shapeType = shapeType;
             self.shapeRadius = shapeRadius;
-            self.thresholdRadius = shapeRadius / 4;
+            self.thresholdRadius = shapeRadius / 3;
         end
         
         function generate(self)
@@ -45,6 +45,7 @@ classdef TraceShapeTrial < TrialInterface
             % and their locations (relative to the center of screen), and 
             % stores it in self.elements for display.
                 
+            self.elements = struct();
             self.elements(1).ElementType = 'framepoly';
             if strcmp(self.shapeType, 'Random')
                 self.elements(1).Shape = self.allowedShapes{randi(length(self.allowedShapes))};
@@ -107,6 +108,13 @@ classdef TraceShapeTrial < TrialInterface
                 self.lastAngle = theta;
                 if abs(self.sweptAngle) >= self.requiredSweepDegrees
                     self.elements(1).Color = [102, 102, 255];
+
+                    self.elements(2).ElementType = 'texture';
+                    self.elements(2).Shape = self.elements(1).Shape;
+                    self.elements(2).Location = [0, 0];
+                    self.elements(2).Radius = 25;
+                    self.elements(2).Color = [255, 255, 255];
+
                     self.hasFinished = true;
                 end
             end

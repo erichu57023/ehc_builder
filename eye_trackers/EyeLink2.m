@@ -7,7 +7,7 @@ classdef EyeLink2 < EyeTrackerInterface
     properties (Access = private)
         display
         settings
-%         xCorr; yCorr;
+        xCorr; yCorr;
     end
 
     methods

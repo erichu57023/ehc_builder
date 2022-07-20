@@ -1,4 +1,31 @@
 classdef DisplayManager < handle
+% DISPLAYMANAGER A centralized manager for handling display of EHC trial elements, using the
+% PsychToolbox interface.
+%
+% PROPERTIES:
+%    screen - Index of the active display
+%    white, black - Float values between 0-1, representing the color range of the display
+%    bgColor - An RGB float triplet (between 0-1), representing the default background color
+%    window - A pointer to the active window
+%    windowRect - A 4-element rect ([left top right bottom]) containing window dimensions
+%    xMax, yMax - Maximum pixel values of the active window
+%    xCenter, yCenter - Pixel values representing the center of the active window
+%
+% METHODS:
+%    openWindow - Initializes a window on the screen specified during instantiation
+%    update - Updates the display with all elements drawn since last update (blocking)
+%    updateAsync - Same as update, but with asynchronous implementation (non-blocking)
+%    asyncReady - Check whether a previously scheduled updateAsync has completed (non-blocking)
+%    asyncEnd - Wait until a previously scheduled updateAsync has completed (blocking)
+%    drawElementInCenter - Draws a single element in the center of the screen, with all other
+%       settings intact
+%    drawDotsFastAt - Draws a list of small circles with the fast graphics renderer
+%    drawElements - Draws a list of elements, each defined by a struct
+%    emptyScreen - Draws an empty rectangle over the whole window, with bgColor
+%    close - Ends all scheduled updates, releases all textures and closes the window
+%
+% See also: EYETRACKERINTERFACE, MANIPULATORINTERFACE, TRIALINTERFACE
+
     properties
         screen
         white; black; bgColor

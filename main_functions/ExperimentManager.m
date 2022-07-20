@@ -3,10 +3,10 @@ classdef ExperimentManager < handle
 % calibration for any eye trackers or manipulators, and provides a main loop for coordinating trials 
 % with data collection and display updates.
 %
-% Properties:
+% PROPERTIES:
 %    data (struct) - Stores all experiment data
 %
-% Methods:
+% METHODS:
 %    addTrial - Adds a trial to the ongoing experiment
 %    calibrate - Connects and calibrates designated hardware
 %    run - Plays each trial in the order they were added
@@ -36,7 +36,7 @@ classdef ExperimentManager < handle
                 backgroundRGB (1,3) {mustBeInteger, mustBeNonnegative, mustBeLessThan(backgroundRGB, 256)} = [0, 0, 0];
             end
             % Constructs an ExperimentManager instance.
-            % Inputs:
+            % INPUTS:
             %    screenID - The ID of the screen to display to, as returned by PsychToolbox
             %    eyeTracker - An instance of EyeTrackerInterface
             %    manipulator - An instance of ManipulatorInterface
@@ -61,7 +61,7 @@ classdef ExperimentManager < handle
                 trial (1,1) {mustBeA(trial, 'TrialInterface')}
             end
             % Adds a trial to the end of the trial queue. 
-            % Inputs:
+            % INPUTS:
             %    trial - An instance of TrialInterface
 
             self.trials{size(self.trials,2) + 1} = trial;
@@ -70,8 +70,9 @@ classdef ExperimentManager < handle
         end
 
         function successFlag = calibrate(self)
-            % Initializes display and hardware interfaces, and runs all calibration routines
-            % Outputs:
+            % Initializes display and hardware interfaces, and runs all calibration routines.
+            % Returns prematurely if an error occurs.
+            % OUTPUTS:
             %    successFlag - Returns true if all calibrations completed without error
 
             successFlag = false;
@@ -142,7 +143,7 @@ classdef ExperimentManager < handle
 
                     if ~isempty(trial.intro)
                         % Require the mouse cursor to be on the center target for 1-3
-                        % seconds, randomized to avoid prediction
+                        % seconds, randomized to avoid prediction of stimulus onset
                         startTime = GetSecs;
                         readySetGo = 1 + 2 * rand;
                         while (GetSecs - startTime < readySetGo)
@@ -171,12 +172,13 @@ classdef ExperimentManager < handle
                                 startTime = GetSecs;
                             end
                         end
-%                         self.display.asyncEnd();
                     end
                 end
 
                 function playTrialPhase()
-                    % Play the round
+                    % Present trial stimuli, and stop when either a pass/fail condition is met, or
+                    % timeout is reached. Record all data to the output struct.
+
                     startTime = GetSecs;
                     timestamp = 0;
                     eyeRawState = self.eyeTracker.poll();
@@ -212,15 +214,14 @@ classdef ExperimentManager < handle
                         
                         % Prepare the next frame to draw
                         if self.display.asyncReady() > 0
-%                             self.display.drawDotsFastAt([eyeCenterXY(1:2); manipCenterXYZ(1:2)])
                             self.display.drawDotsFastAt(manipCenterXYZ(1:2))
                             self.display.drawElements(trial.elements);
                             self.display.updateAsync();
                         end
                         timestamp = GetSecs - startTime;
                     end
-%                     self.display.asyncEnd();
                     
+                    % Record data in an output struct, to be saved at the end of each trial.
                     self.data.TrialData(ii).EyeTrackerData{jj, 1} = eyeTrace(~isnan(eyeTrace(:,1)), :);
                     self.data.TrialData(ii).ManipulatorData{jj, 1} = manipulatorTrace(~isnan(manipulatorTrace(:,1)), :);
                     self.data.TrialData(ii).Outcomes(jj) = outcome;
@@ -229,6 +230,9 @@ classdef ExperimentManager < handle
         end
 
         function close(self)
+            % Closes all hardware, waits for last display frame to end, and closes the window
+            % (cleaning up all loaded textures).
+
             self.eyeTracker.close();
             self.manipulator.close();
             self.display.asyncEnd();

@@ -52,7 +52,7 @@ classdef PolhemusLiberty < ManipulatorInterface
                 cprintf('text', 'Detected previous manipulator calibration, loading...\n')
                 load('manipulator_calibration.mat', 'Date', 'CalibrationFunction');
                 if Date ~= datetime('today')
-                    warning('The provided Polhemus calibration is not from today. Output values may be inaccurate!')
+                    warning('The provided Polhemus calibration is not from today. Output values may be inaccurate!');
                 end
                 self.calibrationFcn = CalibrationFunction;
                 successFlag = true;
