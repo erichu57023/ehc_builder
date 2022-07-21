@@ -41,16 +41,15 @@ classdef DisplayManager < handle
 
     methods
         function self = DisplayManager(screenID, backgroundWeightedRGB)
+            arguments
+                screenID (1,1) {mustBeInteger, mustBePositive}
+                backgroundWeightedRGB (1,3) = [0, 0, 0];
+            end
             % Constructs an DisplayManager instance.
             % INPUTS:
             %    screenID - The ID of the screen to display to, as returned by PsychToolbox
             %    backgroundWeightedRGB (optional) - An RGB triplet defining the background color as
             %       floats between 0-1
-
-            arguments
-                screenID (1,1) {mustBeInteger, mustBePositive}
-                backgroundWeightedRGB (1,3) = [0, 0, 0];
-            end
 
             % Skip sync tests; timing will not be incredibly accurate on Windows anyways
             Screen('Preference', 'SkipSyncTests', 1);
