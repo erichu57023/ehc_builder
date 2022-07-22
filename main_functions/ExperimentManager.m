@@ -48,8 +48,7 @@ classdef ExperimentManager < handle
             self.manipulator = manipulator;
             self.filename = filename;
             self.trials = {};
-
-            self.data.Display = self.display;
+            
             self.data.EyeTracker.Class = class(self.eyeTracker);
             self.data.Manipulator.Class = class(self.manipulator);
             self.data.NumTrials = 0;
@@ -82,6 +81,10 @@ classdef ExperimentManager < handle
             if ~self.manipulator.establish(self.display); return; end
             if ~self.manipulator.calibrate(); return; end
 
+            prop = properties('DisplayManager');
+            for ii = 1 : length(prop)
+                self.data.Display.(prop{ii}) = self.display.(prop{ii});
+            end
             self.data.EyeTracker.calibrationFcn = self.eyeTracker.calibrationFcn;
             self.data.Manipulator.calibrationFcn = self.manipulator.calibrationFcn;
             successFlag = true;
@@ -207,7 +210,7 @@ classdef ExperimentManager < handle
                         end
 
                         % End if a pass/fail condition is met
-                        outcome = trial.check(manipCenterXYZ);
+                        outcome = trial.check(manipCenterXYZ, eyeCenterXY);
                         if outcome ~= 0
                             break
                         end

@@ -15,12 +15,12 @@ PsychDefaultSetup(2);
 screenID = max(Screen('Screens'));
 
 % Define an eye tracker (see eye_trackers folder)
-eyeTracker = EyeLink2();
-% eyeTracker = NoEyeTracker();
+eyeTracker = NoEyeTracker();
+% eyeTracker = EyeLink2();
     
 % Define a manipulator (see manipulators folder)
-manipulator = PolhemusLiberty();
-% manipulator = TouchScreenMouseCursor();
+manipulator = TouchScreenMouseCursor();
+% manipulator = PolhemusLiberty();
 
 % Assign a background color as an 8-bit RGB value (0 to 255)
 background8BitRGB = [0, 0, 0];

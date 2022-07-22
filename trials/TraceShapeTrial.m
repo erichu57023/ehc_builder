@@ -81,12 +81,12 @@ classdef TraceShapeTrial < TrialInterface
             end
         end
 
-        function conditionFlag = check(self, state)
+        function conditionFlag = check(self, manipState, eyeState)
             % Generates a conditionFlag based on input state. If
             % check passes, returns 1. If check fails, returns -1.
             % Otherwise, return 0. Input XY must be relative to screen 
             % center.
-            x = state(1); y = state(2);
+            x = manipState(1); y = manipState(2);
             theta = atan2d(y, x);
             conditionFlag = 0;
 

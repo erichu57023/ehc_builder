@@ -122,12 +122,12 @@ classdef NavonTask < TrialInterface
             self.intro(1).Text = upper(targetLetter);
         end
 
-        function conditionFlag = check(self, state)
+        function conditionFlag = check(self, manipState, eyeState)
             % Generates a conditionFlag based on input state. If
             % check passes, returns 1. If check fails, returns -1.
             % Otherwise, return 0. Input XY must be relative to screen 
             % center
-            xy = state(1:2);
+            xy = manipState(1:2);
             lim = 0.5 * self.targetDimensions;
             targetLoc = self.target.Location;
             conditionFlag = all(xy >= targetLoc - lim) && all(xy <= targetLoc + lim);
