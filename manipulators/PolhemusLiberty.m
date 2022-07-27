@@ -71,17 +71,18 @@ classdef PolhemusLiberty < ManipulatorInterface
 
         function successFlag = calibrate(self)
             % Runs a calibration routine that collects sensor XYZ data from 9 points, and produces a
-            % best-fit linear transformation from 3D sensor data to XYZ coordinates. NOTE: this
-            % function assumes that one axis of the sensor is aligned with the Z-plane, and does NOT
-            % do 3D plane fitting. If a manipulator_calibration.mat file is found, calibration is
-            % skipped.
+            % best-fit linear transformation from 3D sensor data to XYZ coordinates. This function
+            % assumes that all calibration points are roughly coplanar, and uses PCA to determine
+            % the minor axis. While data along the two major axes are scaled and rotated to fit into
+            % screen coordinates (pixels), the minor axis is kept in sensor coordinates (mm).
+            % If a liberty_calibration.mat file is found, calibration is skipped.
             % OUTPUTS:
             %    successFlag - Returns true if nothing went wrong.
 
             % Skip calibration if an existing calibration file is found
-            if isfile('manipulator_calibration.mat')
-                cprintf('text', 'Detected previous manipulator calibration, loading...\n')
-                load('manipulator_calibration.mat', 'Date', 'CalibrationFunction');
+            if isfile('liberty_calibration.mat')
+                cprintf('text', 'Detected previous Liberty calibration, loading...\n')
+                load('liberty_calibration.mat', 'Date', 'CalibrationFunction');
                 
                 % Warn the experimenter if the calibration file is from a previous day
                 if Date ~= datetime('today')
@@ -99,32 +100,30 @@ classdef PolhemusLiberty < ManipulatorInterface
                        [1 1 1 0 0 0 -1 -1 -1] * self.display.yCenter * self.calibrationScale];
             
             % Run the 9-point calibration routine
-            sampleMat = hitCalibrationTargets();
+            sampleMat = hitCalibrationTargets()';
             
-            % zColumn should have the smallest range
-            [~, zColumn] = min(range(sampleMat));
+            % Calculate vectors of XY points relative to centroid
+            centroid = mean(sampleMat, 2);
+            sampleMatCentered = sampleMat - centroid;
 
-            % Calculate vectors of XY points relative to center point
-            xyColumn = find(1:3 ~= zColumn);
-            xyMat = sampleMat(:, xyColumn)';
-            xyzOffset = sampleMat(5, [xyColumn zColumn]);
-            xyIn = xyMat(:, [1:4, 6:end]) - xyMat(:, 5);
-            xyOut = targets(:, [1:4, 6:end]);
+            % Calculate distances of calibration points along the minor (Z) axis (assumes points are 
+            % coplanar) using SVD
+            [u, ~, ~] = svd(sampleMatCentered); % u = 3x3 orthonormal basis
+            normalVec = u(:, 3);        % axis unit vector with smallest variance
+            targetZs = normalVec' * sampleMatCentered;  % projections of points onto this unit vector
             
-            % Calculate 2x2 linear least-squares transform matrix using pseudoinverse 
-            % (self.xyTransform * xyIn ~~ xyOut). This matrix will transform XY sensor coordinates 
-            % to center coordinates.
-            xyzLinear = xyOut * pinv(xyIn);
+            % Calculate 3x3 linear least-squares transform matrix using pseudoinverse. This matrix 
+            % will transform XY sensor coordinates to center coordinates.
+            targetsExtended = [targets; targetZs];
+            linearTransform = targetsExtended / sampleMatCentered;
 
-            % Calculate final calibration function; zColumn will remain in native sensor units with 
-            % constant offset subtracted.
-            xyzLinear(3, 3) = 1;
-            self.calibrationFcn = @(sample) (sample([xyColumn zColumn] + 1) - xyzOffset) * xyzLinear';
+            % Calculate final calibration function
+            self.calibrationFcn = @(sample) (linearTransform * (sample(2:4)' - centroid))';
             
             % Save calibration details to manipulator_calibration.mat
             Date = datetime('today');
             CalibrationFunction = self.calibrationFcn;
-            save('manipulator_calibration.mat', 'Date', 'CalibrationFunction');
+            save('liberty_calibration.mat', 'Date', 'CalibrationFunction');
 
             successFlag = true;
 
@@ -215,14 +214,14 @@ classdef PolhemusLiberty < ManipulatorInterface
             % Polls raw data bytes from the TCP client, checks if the data is complete, converts it
             % to numerical data, and saves it in the ring buffer.
             % OUTPUTS:
-            %    stateRaw - 1x4 vector of most recent sample, or empty if data was incomplete.
+            %    stateRaw - 1x4 vector of most recent sample (in mm), or empty if data was incomplete.
 
             stateRaw = [];
             rcvd_str = readline(self.client);
             rcvd_bytes = uint8(char(rcvd_str));
             if length(rcvd_bytes) ~= 40; return; end
             
-            stateRaw = [GetSecs, 10 * double(typecast(rcvd_bytes(17:28), 'single'))];
+            stateRaw = [GetSecs, 25.4 * double(typecast(rcvd_bytes(17:28), 'single'))];
             if length(stateRaw) ~= 4
                 stateRaw = [];
                 return

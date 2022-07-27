@@ -30,6 +30,7 @@ upon a `DisplayManager` to draw trial elements and feedback to the on-screen dis
 ## Running an experiment
 
 To start an experiment, simply run `EHCBegin` from the command line, making sure to set an eye tracker, manipulator, and add a list of trials in the order that you want them to run.
+Some hardware interfaces (such as `PolhemusLiberty`) may skip calibration routines based on the presence of calibration files; to force calibrations to run, make sure to delete these files.
 
 ## Adding trial types
 
@@ -102,7 +103,7 @@ When starting an experiment, the user will be queried for their initials; this w
 ## Future ideas
 
 * Add more experiment specifications to the dialog box at the start of the experiment, to be saved in the output data file.
-* Do the Polhemus Liberty calibration using plane fitting in 3D space, instead of assuming one dimension is already aligned with the Z-axis.
+* Add a way to force calibration functions to run each time even if calibration files are present, to avoid having to delete them each time.
 
 ---
-Last updated: July 22, 2022 by Eric Hu
+Last updated: July 26, 2022 by Eric Hu
