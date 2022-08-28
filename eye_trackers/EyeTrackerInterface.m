@@ -1,4 +1,4 @@
-classdef (Abstract) EyeTrackerInterface < handle
+classdef EyeTrackerInterface < handle
 % EYETRACKERINTERFACE Abstract implementation of a wrapper for an eye tracker hardware interface.
 % All eye trackers must inherit this class.
 %

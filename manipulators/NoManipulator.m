@@ -36,7 +36,7 @@ classdef NoManipulator < ManipulatorInterface
         end
 
         function state = poll(self)
-            state = [GetSecs, nan, nan]; 
+            state = [GetSecs, nan(1,3)]; 
         end
 
         function close(self); end

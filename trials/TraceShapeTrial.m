@@ -108,15 +108,15 @@ classdef TraceShapeTrial < TrialInterface
         function conditionFlag = check(self, manipState, eyeState)
             % Generates a conditionFlag based on input state.
             % INPUTS:
-            %    manipState - A vector whose first three columns are XYZ data, with XY in screen 
-            %       coordinates.
+            %    manipState - A matrix whose first three columns are XYZ data, with XY in screen 
+            %       coordinates. Each row corresponds to a unique manipulator.
             %    eyeState - A vector whose first twp columns are XY data, with XY in screen 
             %       coordinates.
             % OUTPUTS:
             %    conditionFlag - 1 if success (state within target position), 0 if timeout.
             
             % Measure input angle
-            x = manipState(1); y = manipState(2);
+            x = manipState(1, 1); y = manipState(1, 2);
             theta = atan2d(y, x);
             conditionFlag = 0;
 

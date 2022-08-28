@@ -20,18 +20,18 @@ classdef ExperimentManager < handle
     properties (Access = private)
         display
         eyeTracker
-        manipulator
+        manipulators; numManipulators
         filename
         trials
         introTargetRadius = 50;
     end
 
     methods
-        function self = ExperimentManager(screenID, eyeTracker, manipulator, filename, backgroundRGB)     % Init function
+        function self = ExperimentManager(screenID, eyeTracker, manipulatorList, filename, backgroundRGB)     % Init function
             arguments
                 screenID (1,1) {mustBeInteger, mustBeNonnegative}
                 eyeTracker (1,1) {mustBeA(eyeTracker, 'EyeTrackerInterface')}
-                manipulator (1,1) {mustBeA(manipulator, 'ManipulatorInterface')}
+                manipulatorList (1,:) {mustBeA(manipulatorList, 'ManipulatorInterface')}
                 filename {mustBeText}
                 backgroundRGB (1,3) {mustBeInteger, mustBeNonnegative, mustBeLessThan(backgroundRGB, 256)} = [0, 0, 0];
             end
@@ -39,18 +39,19 @@ classdef ExperimentManager < handle
             % INPUTS:
             %    screenID - The ID of the screen to display to, as returned by PsychToolbox
             %    eyeTracker - An instance of EyeTrackerInterface
-            %    manipulator - An instance of ManipulatorInterface
+            %    manipulatorList - An array of ManipulatorInterface objects.
             %    filename - A filepath to which output data will be saved.
             %    backgroundRGB - An RGB triplet defining the background color
 
             self.display = DisplayManager(screenID, backgroundRGB/255);
             self.eyeTracker = eyeTracker;
-            self.manipulator = manipulator;
+            self.manipulators = manipulatorList;
+            self.numManipulators = length(manipulatorList);
             self.filename = filename;
             self.trials = {};
             
             self.data.EyeTracker.Class = class(self.eyeTracker);
-            self.data.Manipulator.Class = class(self.manipulator);
+            self.data.Manipulators.Class = arrayfun(@(obj)class(obj), self.manipulators, 'UniformOutput', false);
             self.data.NumTrials = 0;
         end
 
@@ -75,18 +76,24 @@ classdef ExperimentManager < handle
             %    successFlag - Returns true if all calibrations completed without error
 
             successFlag = false;
+            
+            % Open a window and save properties of the detected display
             if ~self.display.openWindow(); return; end
-            if ~self.eyeTracker.establish(self.display); return; end
-            if ~self.eyeTracker.calibrate(); return; end
-            if ~self.manipulator.establish(self.display); return; end
-            if ~self.manipulator.calibrate(); return; end
-
             prop = properties('DisplayManager');
             for ii = 1 : length(prop)
                 self.data.Display.(prop{ii}) = self.display.(prop{ii});
             end
+
+            % Set up eye tracker
+            if ~self.eyeTracker.establish(self.display); return; end
+            if ~self.eyeTracker.calibrate(); return; end
             self.data.EyeTracker.calibrationFcn = self.eyeTracker.calibrationFcn;
-            self.data.Manipulator.calibrationFcn = self.manipulator.calibrationFcn;
+
+            % Set up manipulators
+            if ~all(self.manipulators.establishAll(self.display)); return; end
+            if ~all(self.manipulators.calibrateAll()); return; end
+            self.data.Manipulators.calibrationFcn = arrayfun(@(obj)obj.calibrationFcn, self.manipulators, 'UniformOutput', false);
+
             successFlag = true;
         end
 
@@ -145,7 +152,7 @@ classdef ExperimentManager < handle
                     eyeCenterXY = nan(1,2);
 
                     if ~isempty(trial.intro)
-                        % Require the mouse cursor to be on the center target for 1-3
+                        % Require the primary manipulator to be on the center target for 1-3 
                         % seconds, randomized to avoid prediction of stimulus onset
                         startTime = GetSecs;
                         readySetGo = 1 + 2 * rand;
@@ -156,10 +163,10 @@ classdef ExperimentManager < handle
                                 eyeCenterXY = self.eyeTracker.calibrationFcn(eyeRawState);
                             end
 
-                            % Poll the manipulator
-                            if self.manipulator.available()
-                                manipRawState = self.manipulator.poll();
-                                manipCenterXYZ = self.manipulator.calibrationFcn(manipRawState);
+                            % Poll the primary manipulator
+                            if self.manipulators(1).available()
+                                manipRawState = self.manipulators(1).poll();
+                                manipCenterXYZ = self.manipulators(1).calibrationFcn(manipRawState);
                             end
     
                             % Prime the target in the screen center
@@ -184,13 +191,18 @@ classdef ExperimentManager < handle
 
                     startTime = GetSecs;
                     timestamp = 0;
+
+                    % Set up sized buffers for data recording
                     eyeRawState = self.eyeTracker.poll();
-                    manipRawState = self.manipulator.poll();
                     eyeTrace = nan(trial.timeout * 1000, length(eyeRawState));
-                    manipulatorTrace = nan(trial.timeout * 1000, length(manipRawState));
-                    eyeTraceIdx = 1; manipTraceIdx = 1;
-                    manipCenterXYZ = nan(1,3);
-                    eyeCenterXY = nan(1,2);
+                    eyeTraceIdx = 1; 
+                    manipRawStates = self.manipulators.pollAll();
+                    manipTraces = cell(1, self.numManipulators);
+                    for kk = 1 : self.numManipulators
+                        manipTraces{kk} = nan(trial.timeout * 1000, length(manipRawStates{kk}));
+                    end
+                    manipTraceIdxs = ones(1, self.numManipulators);
+                    manipCenterXYZs = nan(self.numManipulators, 3);
                     
                     while (timestamp < trial.timeout)
                         % Poll the eye tracker
@@ -201,23 +213,25 @@ classdef ExperimentManager < handle
                             eyeCenterXY = self.eyeTracker.calibrationFcn(eyeRawState);
                         end
 
-                        % Poll the manipulator
-                        if self.manipulator.available()
-                            manipRawState = self.manipulator.poll();
-                            manipulatorTrace(manipTraceIdx, :) = manipRawState;
-                            manipTraceIdx = manipTraceIdx + 1;
-                            manipCenterXYZ = self.manipulator.calibrationFcn(manipRawState);
+                        % Poll all manipulators
+                        for kk = 1 : self.numManipulators
+                            if self.manipulators(kk).available()
+                                manipRawStates{kk} = self.manipulators(kk).poll();
+                                manipTraces{kk}(manipTraceIdxs(kk), :) = manipRawStates{kk};
+                                manipTraceIdxs(kk) = manipTraceIdxs(kk) + 1;
+                                manipCenterXYZs(kk, :) = self.manipulators(kk).calibrationFcn(manipRawStates{kk});
+                            end
                         end
 
                         % End if a pass/fail condition is met
-                        outcome = trial.check(manipCenterXYZ, eyeCenterXY);
+                        outcome = trial.check(manipCenterXYZs, eyeCenterXY);
                         if outcome ~= 0
                             break
                         end
                         
                         % Prepare the next frame to draw
                         if self.display.asyncReady() > 0
-                            self.display.drawDotsFastAt(manipCenterXYZ(1:2))
+                            self.display.drawDotsFastAt(manipCenterXYZs(1, 1:2))
                             self.display.drawElements(trial.elements);
                             self.display.updateAsync();
                         end
@@ -225,8 +239,14 @@ classdef ExperimentManager < handle
                     end
                     
                     % Record data in an output struct, to be saved at the end of each trial.
-                    self.data.TrialData(ii).EyeTrackerData{jj, 1} = eyeTrace(~isnan(eyeTrace(:,1)), :);
-                    self.data.TrialData(ii).ManipulatorData{jj, 1} = manipulatorTrace(~isnan(manipulatorTrace(:,1)), :);
+                    eyeTrace = eyeTrace(~isnan(eyeTrace(:,1)), :);
+                    self.data.TrialData(ii).EyeTrackerData{jj, 1} = eyeTrace;
+
+                    for kk = 1 : self.numManipulators
+                        manipTraces{kk} = manipTraces{kk}(~isnan(manipTraces{kk}(:,1)), :);
+                        self.data.TrialData(ii).ManipulatorData{jj, kk} = manipTraces{kk};
+                    end
+                    
                     self.data.TrialData(ii).Outcomes(jj) = outcome;
                 end
             end
@@ -237,9 +257,10 @@ classdef ExperimentManager < handle
             % (cleaning up all loaded textures).
 
             self.eyeTracker.close();
-            self.manipulator.close();
+            self.manipulators.closeAll();
             self.display.asyncEnd();
             self.display.close();
         end
     end
 end
+

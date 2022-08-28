@@ -171,13 +171,13 @@ classdef NavonTask < TrialInterface
             % Generates a conditionFlag based on input state.
             % INPUTS:
             %    manipState - A vector whose first three columns are XYZ data, with XY in screen 
-            %       coordinates.
+            %       coordinates. Each row corresponds to a unique manipulator.
             %    eyeState - A vector whose first twp columns are XY data, with XY in screen 
             %       coordinates.
             % OUTPUTS:
             %    conditionFlag - 1 if success (state within target position), 0 if timeout.
             
-            xy = manipState(1:2);
+            xy = manipState(1, 1:2);
             lim = 0.5 * self.targetDimensions;
             targetLoc = self.target.Location;
             conditionFlag = all(xy >= targetLoc - lim) && all(xy <= targetLoc + lim);

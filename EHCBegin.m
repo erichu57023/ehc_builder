@@ -20,8 +20,9 @@ screenID = max(Screen('Screens'));
 eyeTracker = NoEyeTracker();
 % eyeTracker = EyeLink2();
     
-% Define a manipulator (see manipulators folder)
-manipulator = TouchScreenMouseCursor();
+% Define one or more manipulators (see manipulators folder)
+manipulator = [TouchScreenMouseCursor(), NoManipulator()];
+% manipulator = TouchScreenMouseCursor();
 % manipulator = PolhemusLiberty();
 
 % Assign a background color as an 8-bit RGB value (0 to 255)
@@ -31,19 +32,21 @@ background8BitRGB = [0, 0, 0];
 manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, background8BitRGB);
 
 % Add a set of trials (see trials folder)
-manager.addTrial(EmptyTrial(60));
-% 
-manager.addTrial(SingleShapeRingTrial(1, 5, 1, 25));
+% manager.addTrial(EmptyTrial(60));
+
+manager.addTrial(SingleShapeRingTrial(5, 5, 1, 25));
 % manager.addTrial(SingleShapeRingTrial(10, 5, 2, 25));
 % manager.addTrial(SingleShapeRingTrial(10, 5, 2, 25, 90));
 % manager.addTrial(SingleShapeRingTrial(10, 5, 4, 25));
 % manager.addTrial(SingleShapeRingTrial(10, 5, 8, 25));
 % 
-manager.addTrial(NavonTask(1, 5, "local"))
+% manager.addTrial(NavonTask(10, 5, "local"))
 % manager.addTrial(NavonTask(10, 5, "global"))
-% manager.addTrial(NavonTask(10, 5, "random"))
-
-manager.addTrial(TraceShapeTrial(1, 15, 'Random', 200))
+% 
+% manager.addTrial(NavonTask(50, 5, "global"))
+% manager.addTrial(NavonTask(50, 5, "local"))
+% 
+% manager.addTrial(TraceShapeTrial(1, 15, 'Random', 200))
 
 
 % Run the experiment

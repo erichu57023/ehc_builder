@@ -1,19 +1,19 @@
+
 # ehc_builder
 
 This codebase is designed to run eye-hand coordination (EHC) experiments using the Psychtoolbox library in Matlab. It provides a common interface for users to implement their own trials, eye trackers and manipulators, and includes a few basic trial types as examples.
 
 ## How it works
 
-EHC experiments primarily consist of a series of `Trials`, which present distinct on-screen stimuli while evaluating the activity of both an eye and a hand analogue with an `EyeTracker` and a `Manipulator`, respectively. Data is passed between these classes through a central `ExperimentManager`, which integrates incoming data to handle trial progression, while calling
-upon a `DisplayManager` to draw trial elements and feedback to the on-screen display. Experiments play out as follows:
+EHC experiments primarily consist of a series of `Trials`, which present distinct on-screen stimuli while evaluating the activity of both an eye and a limb with an `EyeTracker` and a `Manipulator`, respectively. Data is passed between these classes through a central `ExperimentManager`, which integrates incoming data to handle trial progression, while calling upon a `DisplayManager` to draw trial elements and feedback to the on-screen display. Experiments play out as follows:
 
 * Pre-trial:
-  1. `establish()` connections to all hardware interfaces, and perform `calibrate()` routines as necessary.
+  1. `establish()` connections to all `EyeTracker` and `Manipulator` instances, and perform `calibrate()` routines as necessary.
   2. Before each round of a trial, call `Trial.generate()`, which generates a list of on-screen elements while defining the conditions necessary for success/failure.
-  3. Display a set of elements defined in `Trial.intro`, while checking that the `Manipulator` is in a designated start position (usually a target in the center of the screen). Instruct the player that they should fix their vision upon this target, and display other text instructions if necessary.
-  4. After the `Manipulator` has been held on the center target for a short time, zero the incoming eye-tracker data to the center of the screen, a process known as *drift correction*. The trial is now ready to begin.
+  3. Display a set of elements defined in `Trial.intro`, while checking that the *primary* `Manipulator` (the first one specified) is in a designated start position (usually a target in the center of the screen). Instruct the player that they should fix their vision upon this target, and display other text instructions if necessary.
+  4. After the *primary* `Manipulator` has been held on the center target for a short time, zero the incoming eye-tracker data to the center of the screen, a process known as *drift correction*. The trial is now ready to begin.
 * Trial:
-  1. `poll()` data from both the `EyeTracker` and the `Manipulator`, if it is `available()`.
+  1. `poll()` data from both the `EyeTracker` and the `Manipulators`, if it is `available()`.
   2. Apply the calibration functions of both devices to the incoming raw data, to convert it from the sensor domain to the screen domain.
   3. Pass this data to `Trial.check()`, which checks whether the incoming data passes some series of conditions to count as a *success/timeout/failure*.
   4. If the display is ready to update, draw the list of on-screen elements specified by `Trial.elements`. Optionally draw the sensor-domain data to provide the user with gaze/manipulator feedback.
@@ -29,7 +29,7 @@ upon a `DisplayManager` to draw trial elements and feedback to the on-screen dis
 
 ## Running an experiment
 
-To start an experiment, simply run `EHCBegin` from the command line, making sure to set an eye tracker, manipulator, and add a list of trials in the order that you want them to run.
+To start an experiment, simply run `EHCBegin` from the command line, making sure to set an eye tracker, one or more manipulators (with the first one being the primary), and add a list of trials in the order that you want them to run.
 Some hardware interfaces (such as `PolhemusLiberty`) may skip calibration routines based on the presence of calibration files; to force calibrations to run, make sure to delete these files.
 
 ## Adding trial types
@@ -53,6 +53,8 @@ The following eye trackers have already been implemented:
 
 All eye tracker classes must inherit from and implement the provided `EyeTrackerInterface`; see the class documentation for more details.
 
+*Note*: currently, use of only one eye tracker at a time is supported. 
+
 ## Adding manipulators
 
 The following manipulators have already been implemented:
@@ -60,14 +62,14 @@ The following manipulators have already been implemented:
 * `TouchScreenMouseCursor`: an interface which monitors the position of the mouse cursor and the status of mouse buttons using the Psychtoolbox `GetMouse` function. Can theoretically also be used with a touchscreen, although I haven't dont any thorough testing in this regard.
 * `PolhemusLiberty`: an interface for the [Polhemus Liberty](https://polhemus.com/motion-tracking/all-trackers/liberty) 6-DOF position sensor, which assumes that position + orientation data is actively being published to a local TCP port. 
 
-All manipulator classes must inherit from and implement the provided `ManipulatorInterface`; see the class documentation for more details.
+All manipulator classes must inherit from and implement the provided `ManipulatorInterface`; see the class documentation for more details. 
 
+Multiple manipulators can be sampled/recorded at the same time by specifying a 1xN matrix of `Manipulator` objects. The first manipulator in the list will be used to progress from the pre-trial to the trial phase. *Keep in mind that adding more devices may lower sample rates.*
 
 ## Output data format
 
 When starting an experiment, the user will be queried for their initials; this will generate a filepath at `data/<date>/<initials>_<time>.mat`, which will contain a struct called `Data`. The contents of `Data` are organized as follows:
-
-* `NumTrials`: (int) the number of trials in the experiment **N**
+* `NumTrials`: (int) the total number of trials in the experiment **N**
 * `Display`: (struct) contains information about the display that the experiment was run on
 	* `screen`: (int) the index of the screen returned by Psychtoolbox
 	* `window`: (int) the index of the window generated by Psychtoolbox
@@ -80,18 +82,22 @@ When starting an experiment, the user will be queried for their initials; this w
 * `EyeTracker`: (struct) contains information about the eye tracker that was used
 	* `Class`: (char) the name of the eye tracker class
 	* `calibrationFcn`: (function_handle) a function that, when applied to raw sensor samples, converts them into screen-space coordinates; the first two columns of the output vector must be XY pixel coordinates relative to screen center
-* `Manipulator`: (struct) contains information about the manipulator that was used
-	* `Class`: (char) the name of the manipulator class
-	* `calibrationFcn`: (function_handle) a function that, when applied to raw sensor samples, converts them into screen-space coordinates; the first two columns of the output vector must be XY pixel coordinates relative to screen center
+* `Manipulators`: (struct) contains information about the manipulator that was used
+	* `Class`: (1x**M** cell) the names of all manipulator classes, in the order they were created
+	* `calibrationFcn`: (1x**M** cell) functions for each manipulator that, when applied to raw sensor samples, convert them into screen-space coordinates; the first two columns of the output vector must be XY pixel coordinates relative to screen center
 * `TrialData`: (1x**N** struct) contains information about the trials that were run, and the data collected during each trial
-	* `NumRounds`: (int) the number of rounds in the trial **M**
+	* `NumRounds`: (int) the number of rounds in the trial **R**
 	* `Timeout`: (double) the number of seconds that was set as the trial timeout
-	* `Outcomes`: (1x**M** int) the outcome of each trial, defined as 1 for successes, 0 for timeouts, and -1 for failures
-	* `Elements`: (**M**x1 cell) contains a struct of varying length for each trial, which stores information about the on-screen elements that were displayed for that trial, to be used by `DisplayManager.drawElements()`
-	* `Targets`: (**M**x1 cell) contains a struct of varying length for each trial, which stores information about the specific on-screen elements that used as *success* conditions for that trial
-	* `Failzones`: (**M**x1 cell) contains a struct of varying length for each trial, which stores information about the specific on-screen elements that used as *failure* conditions for that trial
-	* `EyeTrackerData`: (**M**x1 cell) contains a double array of timestamped raw data that was polled from the eye tracker during each trial.
-	* `ManipulatorData`: (**M**x1 cell) contains a double array of timestamped raw data that was polled from the manipulator during each trial.
+	* `Outcomes`: (1x**R** int) the outcome of each trial, defined as 1 for successes, 0 for timeouts, and -1 for failures
+	* `Elements`: (**R**x1 cell) contains a struct of varying length for each trial, which stores information about the on-screen elements that were displayed for that trial, to be used by `DisplayManager.drawElements()`
+	* `Targets`: (**R**x1 cell) contains a struct of varying length for each trial, which stores information about the specific on-screen elements that used as *success* conditions for that trial
+	* `Failzones`: (**R**x1 cell) contains a struct of varying length for each trial, which stores information about the specific on-screen elements that used as *failure* conditions for that trial
+	* `EyeTrackerData`: (**R**x1 cell) contains a double array of timestamped raw data that was polled from the eye tracker during each trial.
+	* `ManipulatorData`: (**R**x**M** cell) contains double arrays of timestamped raw data that was polled from each manipulator during each trial.
+
+**N**: number of trials 
+**R**: number of rounds in a particular trial
+**M**: number of manipulators
 
 ## Known bugs
 
@@ -104,6 +110,9 @@ When starting an experiment, the user will be queried for their initials; this w
 
 * Add more experiment specifications to the dialog box at the start of the experiment, to be saved in the output data file.
 * Add a way to force calibration functions to run each time even if calibration files are present, to avoid having to delete them each time.
-
+* Allow multiple eye trackers to be specified.
+* Allow more flexibility for multi-phase trials (segmented look-and-reach, etc.)
+* Add audio cues for success/failure.
+* Add a way to skip trials and come back to them later.
 ---
-Last updated: July 26, 2022 by Eric Hu
+Last updated: August 27, 2022 by Eric Hu
