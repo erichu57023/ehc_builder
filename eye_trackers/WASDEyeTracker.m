@@ -1,8 +1,8 @@
-classdef NoEyeTracker < EyeTrackerInterface
-% NOEYETRACKER A dummy implementation for use when no eye tracker is required for the experiment.
+classdef WASDEyeTracker < EyeTrackerInterface
+% NOEYETRACKER A debug class where the WASD keys substitute for the eye tracker.
 %
 % PROPERTIES:
-%    calibrationFcn - Simply strips the timestamps from the raw data.
+%    calibrationFcn - Simply strips the timestamps from the raw XY data.
 %
 % METHODS:
 %    establish - Does nothing.
@@ -18,14 +18,22 @@ classdef NoEyeTracker < EyeTrackerInterface
     properties (Access = private)
         state
         display
+        delta_speed = 0.1;
+    end
+    properties (Constant)
+        wKey = KbName('w');
+        aKey = KbName('a');
+        sKey = KbName('s');
+        dKey = KbName('d');
     end
 
     methods
-        function self = NoEyeTracker(); end
+        function self = WASDEyeTracker(); end
 
         function successFlag = establish(self, display)
             self.display = display;
             successFlag = true;
+            self.state = [0, 0];
             self.calibrationFcn = @(x) x(2:end);
         end
 
@@ -38,11 +46,15 @@ classdef NoEyeTracker < EyeTrackerInterface
         end
 
         function state = poll(self)
-            self.state = [GetSecs, 0, 0];
-            state = self.state; 
+            [~, ~, keyCode] = KbCheck();
+            delta = self.delta_speed * [keyCode(self.dKey) - keyCode(self.aKey), keyCode(self.wKey) - keyCode(self.sKey)];
+            self.state = self.state + delta;
+            state = [GetSecs, self.state];
         end
 
-        function driftCorrect(self); end
+        function driftCorrect(self)
+            self.state = [0, 0];
+        end
 
         function self = close(self); end
     end

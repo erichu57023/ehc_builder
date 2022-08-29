@@ -3,6 +3,9 @@ classdef (Abstract) TrialInterface < handle
 %
 % PROPERTIES:
 %    numRounds - The number of rounds to generate in this set of trials.
+%    trialType - A specifier indicating how the look and reach portions of the trial should be
+%       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
+%       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the user is allowed to play during the trial phase
 %       before triggering a timeout.
 %    intro - A struct containing elements to be displayed during the intro phase (information on
@@ -25,6 +28,7 @@ classdef (Abstract) TrialInterface < handle
 
     properties (Abstract)
         numRounds
+        trialType
         timeout
         intro
         elements

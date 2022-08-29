@@ -8,7 +8,7 @@ classdef NoManipulator < ManipulatorInterface
 %    establish - Does nothing.
 %    calibrate - Does nothing.
 %    available - Does nothing.
-%    poll - Always returns [timestamp, nan, nan]
+%    poll - Always returns [timestamp, 0, 0, 0]
 %    close - Does nothing.
 
     properties
@@ -36,7 +36,7 @@ classdef NoManipulator < ManipulatorInterface
         end
 
         function state = poll(self)
-            state = [GetSecs, nan(1,3)]; 
+            state = [GetSecs, zeros(1,3)]; 
         end
 
         function close(self); end

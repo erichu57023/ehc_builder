@@ -4,6 +4,9 @@ classdef EmptyTrial < TrialInterface
 %
 % PROPERTIES:
 %    numRounds - The number of rounds to generate in this set of trials.
+%    trialType - A specifier indicating how the look and reach portions of the trial should be
+%       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
+%       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the trial should run until a timeout is triggered
 %    intro - Always empty.
 %    elements - Always empty.
@@ -16,6 +19,7 @@ classdef EmptyTrial < TrialInterface
 
     properties
         numRounds
+        trialType
         timeout
         intro
         elements
@@ -34,6 +38,7 @@ classdef EmptyTrial < TrialInterface
 
             self.numRounds = 1;
             self.timeout = timeout;
+            self.trialType = 'free';
         end
         
         function generate(self)

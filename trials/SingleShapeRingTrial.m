@@ -4,6 +4,9 @@ classdef SingleShapeRingTrial < TrialInterface
 %
 % PROPERTIES:
 %    numRounds - The number of rounds to generate in this set of trials.
+%    trialType - A specifier indicating how the look and reach portions of the trial should be
+%       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
+%       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the trial should run until a timeout is triggered
 %    intro - Includes 2 elements: a center target shape and instructions
 %    elements -Includes a specified number of shapes arranged in a ring pattern.
@@ -20,6 +23,7 @@ classdef SingleShapeRingTrial < TrialInterface
 
     properties
         numRounds
+        trialType
         timeout
         intro
         elements
@@ -31,6 +35,7 @@ classdef SingleShapeRingTrial < TrialInterface
         targetRadius
         distFromCenter
         axis
+        checkFcn; segment;
     end
     properties(Constant)
         allowedShapes = {'Circle', 'Triangle', 'Square', 'Cross'};
@@ -40,9 +45,10 @@ classdef SingleShapeRingTrial < TrialInterface
     end
 
     methods
-        function self = SingleShapeRingTrial(numRounds, timeout, numTargets, targetRadius, axis, distFromCenter)
+        function self = SingleShapeRingTrial(numRounds, trialType, timeout, numTargets, targetRadius, axis, distFromCenter)
             arguments
                 numRounds (1,1) {mustBeInteger, mustBePositive};
+                trialType {mustBeMember(trialType, {'look', 'reach', 'free', 'segmented'})}
                 timeout (1,1) {mustBeNonnegative};
                 numTargets (1,1) {mustBeInteger, mustBePositive};
                 targetRadius (1,1) {mustBeInteger, mustBePositive} = 25
@@ -52,6 +58,9 @@ classdef SingleShapeRingTrial < TrialInterface
             % Constructs a SingleShapeRingTrial instance.
             % INPUTS:
             %    numRounds - The number of rounds to generate in this set of trials.
+            %    trialType - A specifier indicating how the look and reach portions of the trial 
+            %       should be handled. Supported values are 'look' for look-only, 'reach' for 
+            %       reach-only, 'segmented' to separate look and reach stages, or 'free'.
             %    timeout - The duration in seconds that the trial should run until a timeout is 
             %       triggered.
             %    numTargets - The number of shapes to display each round.
@@ -64,6 +73,20 @@ classdef SingleShapeRingTrial < TrialInterface
             
             self.numRounds = numRounds;
             self.timeout = timeout;
+
+            self.trialType = trialType;
+            switch trialType
+                case 'look'
+                    self.checkFcn = @self.checkLookOnly;
+                case 'reach'
+                    self.checkFcn = @self.checkReachOnly;
+                case 'free'
+                    self.checkFcn = @self.checkFree;
+                case 'segmented'
+                    self.segment = 1;
+                    self.checkFcn = @self.checkSegmented;
+            end
+
             self.numTargets = numTargets;
             self.targetRadius = targetRadius;
             self.distFromCenter = distFromCenter;
@@ -124,9 +147,14 @@ classdef SingleShapeRingTrial < TrialInterface
                 end
             end
 
+            % Add the target to the end of the elements struct so that it can be hidden to signal
+            % start of a reach segment
+            self.elements(self.numTargets + 1) = self.target;
+            self.elements(self.numTargets + 1).Location = [0, 0];
+
             % Populate the intro struct and change the center shape based on the target shape
             self.intro = self.target;
-            self.intro.Location = [0 0];
+            self.intro.Location = [0, 0];
             self.intro(2).ElementType = 'text';
             self.intro(2).Location = [0, 400];
             self.intro(2).Text = self.instructions;
@@ -135,22 +163,84 @@ classdef SingleShapeRingTrial < TrialInterface
             self.intro(2).FontSize = 40;
             self.intro(2).VerticalSpacing = 2;
 
-            % No failzones are implemented; they may be added here.
+            % Reset the segment stage for segmented mode.
+            self.segment = 1;
         end
 
         function conditionFlag = check(self, manipState, eyeState)
-            % Generates a conditionFlag based on input state.
+            % Generates a conditionFlag based on input state. 
             % INPUTS:
             %    manipState - A vector whose first three columns are XYZ data, with XY in screen 
             %       coordinates. Each row corresponds to a unique manipulator.
-            %    eyeState - A vector whose first twp columns are XY data, with XY in screen 
+            %    eyeState - A vector whose first two columns are XY data, with XY in screen 
             %       coordinates.
             % OUTPUTS:
             %    conditionFlag - 1 if success (state within target position), 0 if timeout.
 
+            persistent preCheck;
+            preCheck = 0;
+            if ~preCheck
+                if ismember(self.trialType, {'reach', 'free'})
+                    self.elements(self.numTargets + 1).ElementType = 'hide';
+                end
+                preCheck = 1;
+            end
+            conditionFlag = self.checkFcn(manipState, eyeState);
+        end
+    end
+
+    methods (Access = private)
+        function conditionFlag = checkLookOnly(self, manipState, eyeState)
+            % Checks if the look is on-target, and fails if the manipulator leaves the center 
+            % target.
+            targetLoc = self.target.Location;
+            
+            noReach = norm(manipState(1, 1:2)) <= self.distFromCenter/2;
+            if ~noReach; conditionFlag = -1; return; end
+            
+            distFromTarget = norm(eyeState(1, 1:2) - targetLoc);
+            conditionFlag = distFromTarget <= self.target.Radius;
+        end
+
+        function conditionFlag = checkReachOnly(self, manipState, eyeState)
+            % Checks if the reach is on-target, and fails if the eye position leaves the center 
+            % target.
+            targetLoc = self.target.Location;
+            
+            noLook = norm(eyeState(1, 1:2)) <= self.distFromCenter/2;
+            if ~noLook; conditionFlag = -1; return; end
+            
+            distFromTarget = norm(manipState(1, 1:2) - targetLoc);
+            conditionFlag = distFromTarget <= self.target.Radius;
+        end
+
+        function conditionFlag = checkFree(self, manipState, eyeState)
+            % Checks if the reach is on-target, with no fail condition.
             targetLoc = self.target.Location;
             distFromTarget = norm(manipState(1, 1:2) - targetLoc);
             conditionFlag = distFromTarget <= self.target.Radius;
+        end
+
+        function conditionFlag = checkSegmented(self, manipState, eyeState)
+            targetLoc = self.target.Location;
+
+            if (self.segment == 1)
+                % Start with a look-only segment.
+                conditionFlag = 0;
+                
+                noReach = norm(manipState(1, 1:2)) <= self.distFromCenter/2;
+                if ~noReach; conditionFlag = -1; return; end
+            
+                distFromTarget = norm(eyeState(1, 1:2) - targetLoc);
+                if distFromTarget <= self.target.Radius
+                    self.elements(self.numTargets + 1).ElementType = 'hide';
+                    self.segment = 2;
+                end
+            elseif (self.segment == 2)
+                % End with a free-reach segment.
+                distFromTarget = norm(manipState(1, 1:2) - targetLoc);
+                conditionFlag = distFromTarget <= self.target.Radius;
+            end
         end
     end
 end

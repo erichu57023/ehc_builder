@@ -172,7 +172,7 @@ classdef ExperimentManager < handle
                             % Prime the target in the screen center
                             if self.display.asyncReady() > 0
                                 self.display.drawElements(trial.intro);
-                                self.display.drawDotsFastAt([manipCenterXYZ(1:2)]);
+                                self.display.drawDotsFastAt([manipCenterXYZ(1:2); eyeCenterXY]);
                                 self.display.updateAsync();
                             end
                             
@@ -231,7 +231,7 @@ classdef ExperimentManager < handle
                         
                         % Prepare the next frame to draw
                         if self.display.asyncReady() > 0
-                            self.display.drawDotsFastAt(manipCenterXYZs(1, 1:2))
+                            self.display.drawDotsFastAt([manipCenterXYZs(1, 1:2); eyeCenterXY])
                             self.display.drawElements(trial.elements);
                             self.display.updateAsync();
                         end

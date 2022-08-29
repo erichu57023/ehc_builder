@@ -181,6 +181,10 @@ classdef DisplayManager < handle
                 elementColor = elements(ii).Color / 255 * self.white - self.black;
 
                 switch elements(ii).ElementType
+                    case 'hide'
+                        % Skips over the current element.
+                        continue
+                        
                     case 'texture'
                         % Draws a pre-rendered texture (aka offscreen window). Use for fast display 
                         % of potentially complex shapes.

@@ -1,4 +1,3 @@
-
 # ehc_builder
 
 This codebase is designed to run eye-hand coordination (EHC) experiments using the Psychtoolbox library in Matlab. It provides a common interface for users to implement their own trials, eye trackers and manipulators, and includes a few basic trial types as examples.
@@ -45,10 +44,17 @@ All trial classes must inherit from and implement the provided `TrialInterface`;
 * `text`: a formatted text box to be drawn with the `Screen('DrawFormattedText')` function.
 * `framepoly`: a set of vertices used to draw the outline of a polygon with the `Screen('FramePoly')` or `Screen('FrameOval')` functions.
 
+Flexibility in trial paradigms can be coded into each trial, by writing custom `check()` subfunctions. For example, the `SingleShapeRingTrial` currently has 4 supported paradigms:
+1. *Look-only*: the eye tracker is used to hit targets, and moving the manipulator too far out of home position results in a failure. A visual cue (disappearance of the center target) signals that the player may begin gazing.
+2. *Reach-only*: the manipulator is used to hit targets, and gazing too far away from the screen center results in a failure. (**TODO**: An auditory cue signals that the player may begin reaching.)
+3. *Free*: the manipulator is used to hit targets, and gaze can travel anywhere without restriction. Both cues are presented simultaneously at the start of each trial.
+4. *Segmented*: split into two segments, consisting of a look-only segment (visual cue) followed by a free reach (audio cue).
+
 ## Adding eye trackers
 
 The following eye trackers have already been implemented:
 * `NoEyeTracker`: a dummy class to be used for testing, or when no eye tracker is needed for the experiment.
+* `WASDEyeTracker`: a debug class which substitutes the eye tracker with WASD controls.
 * `EyeLink2`: an interface for the head-mounted [SR Research Eyelink II](https://www.sr-research.com/eyelink-ii/), which uses Psychtoolbox hardware libraries that can be downloaded [here](https://www.sr-support.com/thread-13.html).
 
 All eye tracker classes must inherit from and implement the provided `EyeTrackerInterface`; see the class documentation for more details.
@@ -59,7 +65,7 @@ All eye tracker classes must inherit from and implement the provided `EyeTracker
 
 The following manipulators have already been implemented:
 * `NoManipulator`: a dummy class to be used for testing, or when no manipulator is needed for the experiment.
-* `TouchScreenMouseCursor`: an interface which monitors the position of the mouse cursor and the status of mouse buttons using the Psychtoolbox `GetMouse` function. Can theoretically also be used with a touchscreen, although I haven't dont any thorough testing in this regard.
+* `TouchScreenMouseCursor`: an interface which monitors the position of the mouse cursor and the status of mouse buttons using the Psychtoolbox `GetMouse` function. Can also be used with a touchscreen, although I haven't done testing to verify the manipulator state when the touchscreen is not engaged.
 * `PolhemusLiberty`: an interface for the [Polhemus Liberty](https://polhemus.com/motion-tracking/all-trackers/liberty) 6-DOF position sensor, which assumes that position + orientation data is actively being published to a local TCP port. 
 
 All manipulator classes must inherit from and implement the provided `ManipulatorInterface`; see the class documentation for more details. 
@@ -95,7 +101,7 @@ When starting an experiment, the user will be queried for their initials; this w
 	* `EyeTrackerData`: (**R**x1 cell) contains a double array of timestamped raw data that was polled from the eye tracker during each trial.
 	* `ManipulatorData`: (**R**x**M** cell) contains double arrays of timestamped raw data that was polled from each manipulator during each trial.
 
-**N**: number of trials 
+**N**: number of trials
 **R**: number of rounds in a particular trial
 **M**: number of manipulators
 
@@ -111,8 +117,7 @@ When starting an experiment, the user will be queried for their initials; this w
 * Add more experiment specifications to the dialog box at the start of the experiment, to be saved in the output data file.
 * Add a way to force calibration functions to run each time even if calibration files are present, to avoid having to delete them each time.
 * Allow multiple eye trackers to be specified.
-* Allow more flexibility for multi-phase trials (segmented look-and-reach, etc.)
 * Add audio cues for success/failure.
 * Add a way to skip trials and come back to them later.
 ---
-Last updated: August 27, 2022 by Eric Hu
+Last updated: August 28, 2022 by Eric Hu
