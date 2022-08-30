@@ -18,6 +18,7 @@ classdef NavonTask < TrialInterface
 
     properties
         numRounds
+        trialType
         timeout
         intro
         elements
@@ -33,15 +34,17 @@ classdef NavonTask < TrialInterface
         distFromCenter
         randomizeFlag
         targetDimensions
+        localColor; globalColor
     end
     properties(Constant)
-        instructions = ['To begin, hold your cursor on the letter.', newline ...
-                        '2 letters made up of smaller letters will appear.', newline ...
-                        'Touch the side with the correct letter (big or small).'];
+%         instructions = ['To begin, hold your cursor on the letter.', newline ...
+%                         '2 letters made up of smaller letters will appear.', newline ...
+%                         'Touch the side with the correct letter (big or small).'];
+        instructions = '';
     end
 
     methods
-        function self = NavonTask(numRounds, timeout, mode, allowedLetters, distFromCenter, fontSize, monospaceFont, targetDimensions)
+        function self = NavonTask(numRounds, timeout, mode, allowedLetters, distFromCenter, fontSize, monospaceFont, targetDimensions, localColor, globalColor)
             % Defines a phase of trials.
             arguments
                 numRounds (1,1) {mustBeInteger, mustBePositive}
@@ -52,6 +55,8 @@ classdef NavonTask < TrialInterface
                 fontSize (1,1) {mustBeInteger, mustBePositive} = 40;
                 monospaceFont {mustBeText} = 'Consolas';
                 targetDimensions (1,2) {mustBeInteger, mustBePositive} = [200, 200]
+                localColor (1,3) = [128, 128, 255];
+                globalColor (1,3) = [255, 128, 128];
             end
             % Constructs a NavonTask instance.
             % INPUTS:
@@ -71,8 +76,13 @@ classdef NavonTask < TrialInterface
             %       characters have the same width)
             %    targetDimensions - The dimensions of invisible bounding boxes centered at the
             %       center of each text box, which represent target zones for a pass/fail condition.
+            %    localColor - An RGB triplet defining the color of the intro target if the target is
+            %       a local feature
+            %    globalColor - An RGB triplet defining the color of the intro target if the target is
+            %       a global feature
 
             self.numRounds = numRounds;
+            self.trialType = 'free';
             self.timeout = timeout;
             self.font = monospaceFont;
             self.fontSize = fontSize;
@@ -80,6 +90,8 @@ classdef NavonTask < TrialInterface
             self.allowedLetters = unique(lower(allowedLetters));
             self.distFromCenter = distFromCenter;
             self.targetDimensions = targetDimensions;
+            self.localColor = localColor;
+            self.globalColor = globalColor;
 
             if length(self.allowedLetters) < 3
                 error('NavonTask: must provide at least 3 unique allowed letters');
@@ -105,7 +117,7 @@ classdef NavonTask < TrialInterface
             self.intro(2).Text = self.instructions;
             self.intro(2).Location = [0, 400];
         end
-        
+
         function generate(self)
             % Generates a new trial, by producing a list of all visual elements and their locations 
             % (relative to the center of screen), and populating the element variables.
@@ -165,6 +177,13 @@ classdef NavonTask < TrialInterface
 
             % Change center target on intro screen to display the target letter
             self.intro(1).Text = upper(targetLetter);
+            
+            % Change intro color based on trial type
+            if trialMode == "local"
+                self.intro(1).Color = self.localColor;
+            else
+                self.intro(1).Color = self.globalColor;
+            end
         end
 
         function conditionFlag = check(self, manipState, eyeState)

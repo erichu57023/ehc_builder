@@ -23,7 +23,12 @@ classdef ExperimentManager < handle
         manipulators; numManipulators
         filename
         trials
+    end
+    properties (Constant, Access = private)
+        driftCorrKey = 'M';
+        calibrateKey = 'N';
         introTargetRadius = 50;
+        hasLeftCenter = @(x) norm(x) >= ExperimentManager.introTargetRadius * 2;
     end
 
     methods
@@ -66,7 +71,6 @@ classdef ExperimentManager < handle
 
             self.trials{size(self.trials,2) + 1} = trial;
             self.data.NumTrials = self.data.NumTrials + 1;
-            
         end
 
         function successFlag = calibrate(self)
@@ -106,7 +110,9 @@ classdef ExperimentManager < handle
             % 3) Play the trial, displaying all elements on screen, collecting eye and manipulator 
             % data each loop, and passing that into the trial object to check for pass/fail
             % conditions
-            % 4) Saves data to the output file after completion of each trial
+            % 4) For all rounds in the trial that do not pass with success (outcome ~= 1), save them
+            % in a temporary buffer to be replayed later.
+            % 5) Saves data to the output file after completion of each trial
             
             for ii = 1:length(self.trials)
                 runTrial(self.trials{ii});
@@ -115,21 +121,40 @@ classdef ExperimentManager < handle
             function runTrial(trial)
                 % Runs a single trial defined by TrialInterface
 
+                failBuffer = {};
+
                 self.data.TrialData(ii).NumRounds = trial.numRounds;
                 self.data.TrialData(ii).Timeout = trial.timeout;
                 self.data.TrialData(ii).Outcomes = zeros(1, trial.numRounds);
 
-                for jj = 1:trial.numRounds
+                jj = 1;
+                while (jj <= trial.numRounds) || ~isempty(failBuffer)
                     % Generate a new round, which populates the instance properties of the
                     % Trial object with new elements
                     trial.generate();
+
+                    % If all the rounds have been completed and there are some that failed, rerun
+                    % those.
+                    if (jj > trial.numRounds) && ~isempty(failBuffer)
+                        trial.intro = failBuffer{1}.intro;
+                        trial.elements = failBuffer{1}.elements;
+                        trial.target = failBuffer{1}.target;
+                        trial.failzone = failBuffer{1}.failzone;
+                        failBuffer(1) = [];
+                    end
+                    
+                    % Save the trial details to 
                     self.data.TrialData(ii).Elements{jj, 1} = trial.elements;
                     self.data.TrialData(ii).Targets{jj, 1} = trial.target;
                     self.data.TrialData(ii).Failzones{jj, 1} = trial.failzone;
-                    
+
                     % Clear the display
                     self.display.emptyScreen();
                     self.display.update();
+
+                    % Tell the operator that they can perform drift correction/calibration during
+                    % intro phase.
+                    cprintf('RED*','INTRO: %s to run drift correction, %s to run calibration\n', self.driftCorrKey, self.calibrateKey);
 
                     % Provide instructions and perform gaze correction on center target
                     playIntroPhase(); 
@@ -139,6 +164,8 @@ classdef ExperimentManager < handle
 
                     % Play the trial and record all data
                     playTrialPhase(); 
+                    
+                    jj = jj + 1;
                 end
 
                 % Save data for each completed trial during runtime
@@ -151,12 +178,27 @@ classdef ExperimentManager < handle
                     manipCenterXYZ = nan(1,3);
                     eyeCenterXY = nan(1,2);
 
-                    if ~isempty(trial.intro)
+                    if ~isempty(trial.intro)                        
                         % Require the primary manipulator to be on the center target for 1-3 
                         % seconds, randomized to avoid prediction of stimulus onset
                         startTime = GetSecs;
                         readySetGo = 1 + 2 * rand;
                         while (GetSecs - startTime < readySetGo)
+                            % Check if operator wants to do eye tracker drift-correction or
+                            % recalibration
+                            [~, ~, keyCode] = KbCheck();
+                            if keyCode(KbName(self.driftCorrKey))
+                                self.display.asyncEnd();
+                                KbReleaseWait;
+                                self.eyeTracker.driftCorrect();
+                                startTime = GetSecs;
+                            elseif keyCode(KbName(self.calibrateKey))
+                                self.display.asyncEnd();
+                                KbReleaseWait;
+                                self.eyeTracker.calibrate();
+                                startTime = GetSecs;
+                            end
+
                             % Poll the eye tracker
                             if self.eyeTracker.available()
                                 eyeRawState = self.eyeTracker.poll();
@@ -189,8 +231,8 @@ classdef ExperimentManager < handle
                     % Present trial stimuli, and stop when either a pass/fail condition is met, or
                     % timeout is reached. Record all data to the output struct.
 
-                    startTime = GetSecs;
-                    timestamp = 0;
+                    startTime = Inf;
+                    timestamp = -Inf;
 
                     % Set up sized buffers for data recording
                     eyeRawState = self.eyeTracker.poll();
@@ -222,12 +264,16 @@ classdef ExperimentManager < handle
                                 manipCenterXYZs(kk, :) = self.manipulators(kk).calibrationFcn(manipRawStates{kk});
                             end
                         end
+                        
+                        % Only start the timeout timer if the player has moved either eye tracker or
+                        % manipulator out of the central zone
+                        if (startTime == inf) && (self.hasLeftCenter(eyeCenterXY) || self.hasLeftCenter(manipCenterXYZs(1, 1:2)))
+                            startTime = GetSecs;
+                        end
 
                         % End if a pass/fail condition is met
                         outcome = trial.check(manipCenterXYZs, eyeCenterXY);
-                        if outcome ~= 0
-                            break
-                        end
+                        if outcome ~= 0; break; end
                         
                         % Prepare the next frame to draw
                         if self.display.asyncReady() > 0
@@ -248,6 +294,15 @@ classdef ExperimentManager < handle
                     end
                     
                     self.data.TrialData(ii).Outcomes(jj) = outcome;
+
+                    % Save original trial information to the failbuffer if the trial didn't succeed
+                    if outcome ~= 1
+                        failedTrial.intro = trial.intro;
+                        failedTrial.elements = self.data.TrialData(ii).Elements{jj, 1};
+                        failedTrial.target = self.data.TrialData(ii).Targets{jj, 1};
+                        failedTrial.failzone = self.data.TrialData(ii).Failzones{jj, 1};
+                        failBuffer{length(failBuffer) + 1} = failedTrial;
+                    end
                 end
             end
         end

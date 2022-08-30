@@ -64,7 +64,7 @@ classdef EyeLink2 < EyeTrackerInterface
 
             % Make sure connection is still active.
             if Eyelink('IsConnected') ~= 1 
-	            disp('EyeLink not connected, shutting down...');
+	            disp('EyeLink2: EyeLink not connected, shutting down...');
 	            Eyelink('Shutdown');
 	            sca;
             end
@@ -86,6 +86,8 @@ classdef EyeLink2 < EyeTrackerInterface
 
             % Apply the changes from above
             EyelinkUpdateDefaults(self.settings); 
+
+            disp('EyeLink2: established')
             successFlag = true;
         end
 
@@ -102,6 +104,7 @@ classdef EyeLink2 < EyeTrackerInterface
                 Eyelink('StartRecording');
                 self.calibrationFcn = @(x) x(2:end);
 %                 self.xCorr = 0; self.yCorr = 0;   % For naive drift correction
+                disp('EyeLink2: calibrated')
                 successFlag = true;
             catch
                 successFlag = false;
@@ -138,6 +141,7 @@ classdef EyeLink2 < EyeTrackerInterface
 %             self.yCorr = state(3);
 
             Eyelink('Command', 'online_dcorr_trigger');
+            disp('EyeLink2: drift corrected')
         end
 
         function close(self)

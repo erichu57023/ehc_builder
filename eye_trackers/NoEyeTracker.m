@@ -27,9 +27,11 @@ classdef NoEyeTracker < EyeTrackerInterface
             self.display = display;
             successFlag = true;
             self.calibrationFcn = @(x) x(2:end);
+            disp('NoEyeTracker: established')
         end
 
         function successFlag = calibrate(self)
+            disp('NoEyeTracker: calibrated')
             successFlag = true;
         end    
 
@@ -42,7 +44,9 @@ classdef NoEyeTracker < EyeTrackerInterface
             state = self.state; 
         end
 
-        function driftCorrect(self); end
+        function driftCorrect(self)
+            disp('NoEyeTracker: drift-corrected')
+        end
 
         function self = close(self); end
     end

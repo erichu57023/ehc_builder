@@ -1,3 +1,4 @@
+
 # ehc_builder
 
 This codebase is designed to run eye-hand coordination (EHC) experiments using the Psychtoolbox library in Matlab. It provides a common interface for users to implement their own trials, eye trackers and manipulators, and includes a few basic trial types as examples.
@@ -17,8 +18,9 @@ EHC experiments primarily consist of a series of `Trials`, which present distinc
   3. Pass this data to `Trial.check()`, which checks whether the incoming data passes some series of conditions to count as a *success/timeout/failure*.
   4. If the display is ready to update, draw the list of on-screen elements specified by `Trial.elements`. Optionally draw the sensor-domain data to provide the user with gaze/manipulator feedback.
 * Post-trial:
-  1. Save the raw data along with a list of trial elements to an output structure for export.
-  2. After all trials are complete, `close()` the hardware interfaces and shut down the experiment.
+  1. If a round failed, save the trial elements, and replay the round after all other rounds are complete.
+  2. Save the raw data along with a list of trial elements to an output structure for export.
+  3. After all trials are complete, `close()` the hardware interfaces and shut down the experiment.
 
 ## Getting started
 
@@ -40,6 +42,8 @@ The following trials have already been implemented:
 * `TraceShapeTrial`: a trial where the player must trace the outline of a shape presented in the center of the screen.
 
 All trial classes must inherit from and implement the provided `TrialInterface`; see the class documentation for more details. In addition, all elements in the `Trial.elements` struct must include an `ElementType` property that is supported by `DisplayManager.drawElements()`. If you have special element types, make sure to update this function. The element types that are currently supported are:
+
+* `hide`: a label which skips drawing the element. Used for when elements need to be added and removed quickly throughout a trial.
 * `texture`: an image that can be pre-rendered for rapid drawing to the screen, generally used for filled shapes. While Psychtoolbox provides the `Screen('FillPoly')` function, this can be slow for complex and non-convex polygons, so pre-rendering a texture with `Screen('MakeTexture')` is a better idea. To create your own textures, see the `GenerateShapeBitmaps` helper function; the `DisplayManager` will automatically render all textures defined by the output of this function.
 * `text`: a formatted text box to be drawn with the `Screen('DrawFormattedText')` function.
 * `framepoly`: a set of vertices used to draw the outline of a polygon with the `Screen('FramePoly')` or `Screen('FrameOval')` functions.
@@ -94,15 +98,16 @@ When starting an experiment, the user will be queried for their initials; this w
 * `TrialData`: (1x**N** struct) contains information about the trials that were run, and the data collected during each trial
 	* `NumRounds`: (int) the number of rounds in the trial **R**
 	* `Timeout`: (double) the number of seconds that was set as the trial timeout
-	* `Outcomes`: (1x**R** int) the outcome of each trial, defined as 1 for successes, 0 for timeouts, and -1 for failures
-	* `Elements`: (**R**x1 cell) contains a struct of varying length for each trial, which stores information about the on-screen elements that were displayed for that trial, to be used by `DisplayManager.drawElements()`
-	* `Targets`: (**R**x1 cell) contains a struct of varying length for each trial, which stores information about the specific on-screen elements that used as *success* conditions for that trial
-	* `Failzones`: (**R**x1 cell) contains a struct of varying length for each trial, which stores information about the specific on-screen elements that used as *failure* conditions for that trial
-	* `EyeTrackerData`: (**R**x1 cell) contains a double array of timestamped raw data that was polled from the eye tracker during each trial.
-	* `ManipulatorData`: (**R**x**M** cell) contains double arrays of timestamped raw data that was polled from each manipulator during each trial.
+	* `Outcomes`: (1x**A** int) the outcome of each trial, defined as 1 for successes, 0 for timeouts, and -1 for failures
+	* `Elements`: (**A**x1 cell) contains a struct of varying length for each trial, which stores information about the on-screen elements that were displayed for that trial, to be used by `DisplayManager.drawElements()`
+	* `Targets`: (**A**x1 cell) contains a struct of varying length for each trial, which stores information about the specific on-screen elements that used as *success* conditions for that trial
+	* `Failzones`: (**A**x1 cell) contains a struct of varying length for each trial, which stores information about the specific on-screen elements that used as *failure* conditions for that trial
+	* `EyeTrackerData`: (**A**x1 cell) contains a double array of timestamped raw data that was polled from the eye tracker during each trial.
+	* `ManipulatorData`: (**A**x**M** cell) contains double arrays of timestamped raw data that was polled from each manipulator during each trial.
 
-**N**: number of trials
-**R**: number of rounds in a particular trial
+**N**: number of trials\
+**R**: number of rounds in a particular trial\
+**A**: number of attempts in a particular trial (must be greater than **R**)\
 **M**: number of manipulators
 
 ## Known bugs
@@ -118,6 +123,5 @@ When starting an experiment, the user will be queried for their initials; this w
 * Add a way to force calibration functions to run each time even if calibration files are present, to avoid having to delete them each time.
 * Allow multiple eye trackers to be specified.
 * Add audio cues for success/failure.
-* Add a way to skip trials and come back to them later.
 ---
-Last updated: August 28, 2022 by Eric Hu
+Last updated: August 29, 2022 by Eric Hu

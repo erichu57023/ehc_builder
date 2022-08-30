@@ -30,9 +30,11 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             SetMouse(0, 0, self.window);
             successFlag = true;
             self.calibrationFcn = @(x) x(2:end);
+            disp('TouchScreenMouseCursor: established')
         end
 
         function successFlag = calibrate(self)
+            disp('TouchScreenMouseCursor: calibrated')
             successFlag = true;
         end
 

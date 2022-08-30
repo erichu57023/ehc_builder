@@ -35,7 +35,7 @@ classdef SingleShapeRingTrial < TrialInterface
         targetRadius
         distFromCenter
         axis
-        checkFcn; segment;
+        checkFcn; segment; preCheck;
     end
     properties(Constant)
         allowedShapes = {'Circle', 'Triangle', 'Square', 'Cross'};
@@ -165,6 +165,7 @@ classdef SingleShapeRingTrial < TrialInterface
 
             % Reset the segment stage for segmented mode.
             self.segment = 1;
+            self.preCheck = 0;
         end
 
         function conditionFlag = check(self, manipState, eyeState)
@@ -177,19 +178,23 @@ classdef SingleShapeRingTrial < TrialInterface
             % OUTPUTS:
             %    conditionFlag - 1 if success (state within target position), 0 if timeout.
 
-            persistent preCheck;
-            preCheck = 0;
-            if ~preCheck
+            % This pre-check stage will only run once, and hides the element on the center of the
+            % screen for the trial types that don't require a visual cue to begin reaching.
+            if ~self.preCheck
                 if ismember(self.trialType, {'reach', 'free'})
                     self.elements(self.numTargets + 1).ElementType = 'hide';
                 end
-                preCheck = 1;
+                self.preCheck = 1;
             end
+
+            % This runs every time.
             conditionFlag = self.checkFcn(manipState, eyeState);
         end
     end
 
     methods (Access = private)
+        % Split into different check functions for each trial type for runtime efficiency.
+
         function conditionFlag = checkLookOnly(self, manipState, eyeState)
             % Checks if the look is on-target, and fails if the manipulator leaves the center 
             % target.
@@ -222,6 +227,7 @@ classdef SingleShapeRingTrial < TrialInterface
         end
 
         function conditionFlag = checkSegmented(self, manipState, eyeState)
+            % First checks if look is on-target, and then begins a reach check.
             targetLoc = self.target.Location;
 
             if (self.segment == 1)

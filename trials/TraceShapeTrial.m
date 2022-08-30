@@ -21,6 +21,7 @@ classdef TraceShapeTrial < TrialInterface
 
     properties
         numRounds
+        trialType
         timeout
         intro
         elements
@@ -60,6 +61,7 @@ classdef TraceShapeTrial < TrialInterface
 
             self.numRounds = numRounds;
             self.timeout = timeout;
+            self.trialType = 'free';
             self.shapeType = shapeType;
             self.shapeRadius = shapeRadius;
             self.thresholdRadius = shapeRadius / 4;

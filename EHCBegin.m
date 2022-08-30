@@ -34,17 +34,15 @@ manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, backgro
 % Add a set of trials (see trials folder)
 % manager.addTrial(EmptyTrial(60));
 
-manager.addTrial(SingleShapeRingTrial(5, 'segmented', 5, 1, 25));
-% manager.addTrial(SingleShapeRingTrial(10, 5, 2, 25));
-% manager.addTrial(SingleShapeRingTrial(10, 5, 2, 25, 90));
-% manager.addTrial(SingleShapeRingTrial(10, 5, 4, 25));
-% manager.addTrial(SingleShapeRingTrial(10, 5, 8, 25));
+manager.addTrial(SingleShapeRingTrial(3, 'free', 5, 1, 25));
+manager.addTrial(SingleShapeRingTrial(3, 'free', 5, 8, 25));
+% manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 2, 25, 90));
+% manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 4, 25));
+% manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 8, 25));
 % 
+% manager.addTrial(NavonTask(10, 5, "random"))
 % manager.addTrial(NavonTask(10, 5, "local"))
 % manager.addTrial(NavonTask(10, 5, "global"))
-% 
-% manager.addTrial(NavonTask(50, 5, "global"))
-% manager.addTrial(NavonTask(50, 5, "local"))
 % 
 % manager.addTrial(TraceShapeTrial(1, 15, 'Random', 200))
 

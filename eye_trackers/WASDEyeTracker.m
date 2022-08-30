@@ -35,9 +35,11 @@ classdef WASDEyeTracker < EyeTrackerInterface
             successFlag = true;
             self.state = [0, 0];
             self.calibrationFcn = @(x) x(2:end);
+            disp('WASDEyeTracker: established')
         end
 
         function successFlag = calibrate(self)
+            disp('WASDEyeTracker: calibrated')
             successFlag = true;
         end    
 
@@ -53,6 +55,7 @@ classdef WASDEyeTracker < EyeTrackerInterface
         end
 
         function driftCorrect(self)
+            disp('WASDEyeTracker: drift-corrected')
             self.state = [0, 0];
         end
 

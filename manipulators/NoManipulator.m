@@ -25,9 +25,11 @@ classdef NoManipulator < ManipulatorInterface
             self.display = display;
             successFlag = true;
             self.calibrationFcn = @(x) x(2:end);
+            disp('NoManipulator: established')
         end
 
         function successFlag = calibrate(self)
+            disp('NoManipulator: calibrated')
             successFlag = true;
         end
 
