@@ -107,7 +107,7 @@ When starting an experiment, the user will be queried for their initials; this w
 
 **N**: number of trials\
 **R**: number of rounds in a particular trial\
-**A**: number of attempts in a particular trial (must be greater than **R**)\
+**A**: number of attempts in a particular trial (must be at least **R**)\
 **M**: number of manipulators
 
 ## Known bugs

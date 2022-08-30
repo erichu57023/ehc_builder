@@ -35,7 +35,7 @@ classdef WASDEyeTracker < EyeTrackerInterface
             successFlag = true;
             self.state = [0, 0];
             self.calibrationFcn = @(x) x(2:end);
-            disp('WASDEyeTracker: established')
+            disp('WASDEyeTracker: established! Use WASD to control the eye tracker')
         end
 
         function successFlag = calibrate(self)

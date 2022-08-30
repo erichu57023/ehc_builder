@@ -37,6 +37,7 @@ classdef DisplayManager < handle
     properties (Access = private)
         textures
         vertices
+        audioDriver
     end
 
     methods
@@ -57,7 +58,6 @@ classdef DisplayManager < handle
             % ONLY use verbosity for debugging! If not, the constant print statements can mess up
             % the timing of screen updates and cause freezing/crashing
             Screen('Preference', 'Verbosity', 0);
-
             Screen('Preference', 'TextRenderer', 1);
             PsychImaging('PrepareConfiguration');
             PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
@@ -87,6 +87,10 @@ classdef DisplayManager < handle
                 Screen('BlendFunction', self.window, 'GL_ONE', 'GL_DST_ALPHA');
                 HideCursor(self.window);
                 Priority(MaxPriority(self.window));
+
+                % Open an audio driver for feedback
+                self.audioDriver = PsychPortAudio('Open');
+                Snd('Open', self.audioDriver);
     
                 % Load shape textures into window for fast display
                 [bitmaps, self.vertices]= GenerateShapeBitmaps();
@@ -246,6 +250,8 @@ classdef DisplayManager < handle
 
             Screen('Close', self.window);
             Priority(0);
+            Snd('Close');
+            PsychPortAudio('Close', self.audioDriver);
         end
     end
 

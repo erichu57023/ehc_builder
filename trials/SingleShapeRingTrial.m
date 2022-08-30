@@ -42,6 +42,8 @@ classdef SingleShapeRingTrial < TrialInterface
         instructions = ['To begin, hold your cursor on the shape.', newline ...
                         'A number of targets will appear.', newline ...
                         'Touch the target that matches that shape.'];
+        startLookBeep = @(~) Beeper(400, 0.4, 0.1);
+        successBeep = @(~) Beeper(1000, 0.4, 0.1);
     end
 
     methods
@@ -181,14 +183,25 @@ classdef SingleShapeRingTrial < TrialInterface
             % This pre-check stage will only run once, and hides the element on the center of the
             % screen for the trial types that don't require a visual cue to begin reaching.
             if ~self.preCheck
-                if ismember(self.trialType, {'reach', 'free'})
-                    self.elements(self.numTargets + 1).ElementType = 'hide';
+                switch self.trialType
+                    case 'look'
+                        self.startLookBeep()
+                    case 'reach'
+                        self.elements(self.numTargets + 1).ElementType = 'hide';
+                    case 'free'
+                        self.startLookBeep()
+                        self.elements(self.numTargets + 1).ElementType = 'hide';
+                    case 'segmented'
+                        self.startLookBeep()
                 end
                 self.preCheck = 1;
             end
 
             % This runs every time.
             conditionFlag = self.checkFcn(manipState, eyeState);
+            if conditionFlag == 1
+                self.successBeep();
+            end
         end
     end
 
