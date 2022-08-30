@@ -6,10 +6,11 @@ classdef WASDEyeTracker < EyeTrackerInterface
 %
 % METHODS:
 %    establish - Does nothing.
-%    calibrate - Does nothing.
+%    calibrate - Sets the output to [0, 0]
 %    available - Does nothing.
-%    poll - Always returns [timestamp, 0, 0]
-%    driftCorrect - Does nothing.
+%    poll - Checks to see if an active keypress is WASD, adjusts the cursor position accordingly,
+%       and returns the output.
+%    driftCorrect - Sets the output to [0, 0]
 %    close - Does nothing.
 
     properties
