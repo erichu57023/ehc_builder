@@ -122,6 +122,5 @@ When starting an experiment, the user will be queried for their initials; this w
 * Add more experiment specifications to the dialog box at the start of the experiment, to be saved in the output data file.
 * Add a way to force calibration functions to run each time even if calibration files are present, to avoid having to delete them each time.
 * Allow multiple eye trackers to be specified.
-* Add audio cues for success/failure.
 ---
 Last updated: August 29, 2022 by Eric Hu

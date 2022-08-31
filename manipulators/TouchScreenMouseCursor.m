@@ -29,7 +29,7 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             self.yMax = display.yMax;
             SetMouse(0, 0, self.window);
             successFlag = true;
-            self.calibrationFcn = @(x) x(2:end);
+            self.calibrationFcn = @(x) x(1:3);
             disp('TouchScreenMouseCursor: established')
         end
 
@@ -47,7 +47,7 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             [x, y, buttons] = GetMouse(self.window);
             x = min(x, self.xMax) - self.xMax/2;
             y = -(min(y, self.yMax) - self.yMax/2);
-            state = [GetSecs, x, y, any(buttons)];
+            state = [x, y, any(buttons), GetSecs];
         end
 
         function self = close(self); end

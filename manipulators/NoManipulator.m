@@ -8,7 +8,7 @@ classdef NoManipulator < ManipulatorInterface
 %    establish - Does nothing.
 %    calibrate - Does nothing.
 %    available - Does nothing.
-%    poll - Always returns [timestamp, 0, 0, 0]
+%    poll - Always returns [0, 0, 0, timestamp]
 %    close - Does nothing.
 
     properties
@@ -24,7 +24,7 @@ classdef NoManipulator < ManipulatorInterface
         function successFlag = establish(self, display)
             self.display = display;
             successFlag = true;
-            self.calibrationFcn = @(x) x(2:end);
+            self.calibrationFcn = @(x) x(1:3);
             disp('NoManipulator: established')
         end
 
@@ -38,7 +38,7 @@ classdef NoManipulator < ManipulatorInterface
         end
 
         function state = poll(self)
-            state = [GetSecs, zeros(1,3)]; 
+            state = [zeros(1,3), GetSecs]; 
         end
 
         function close(self); end

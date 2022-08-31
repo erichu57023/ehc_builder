@@ -6,9 +6,9 @@ classdef NoEyeTracker < EyeTrackerInterface
 %
 % METHODS:
 %    establish - Does nothing.
-%    calibrate - Does nothing.
+%    calibrate - Generates a function which always returns [0, 0].
 %    available - Does nothing.
-%    poll - Always returns [timestamp, 0, 0]
+%    poll - Always returns [0, 0, 0, 0, timestamp]
 %    driftCorrect - Does nothing.
 %    close - Does nothing.
 
@@ -26,7 +26,7 @@ classdef NoEyeTracker < EyeTrackerInterface
         function successFlag = establish(self, display)
             self.display = display;
             successFlag = true;
-            self.calibrationFcn = @(x) x(2:end);
+            self.calibrationFcn = @(x) [0, 0];
             disp('NoEyeTracker: established')
         end
 
@@ -40,7 +40,7 @@ classdef NoEyeTracker < EyeTrackerInterface
         end
 
         function state = poll(self)
-            self.state = [GetSecs, 0, 0];
+            self.state = [0, 0, 0, 0, GetSecs];
             state = self.state; 
         end
 

@@ -57,7 +57,6 @@ classdef PolhemusLiberty < ManipulatorInterface
             self.display = display;
             self.ringIdx = 0;
             self.ringBuffer = zeros(self.ringSize, 4);
-            self.calibrationFcn = @(x) x(2:3);
             try 
                 % Establish TCP/IP connection 
                 self.client = tcpclient(self.ipAddress, self.tcpPort, 'ConnectTimeout', 5);
@@ -118,7 +117,7 @@ classdef PolhemusLiberty < ManipulatorInterface
             linearTransform = targetsExtended / sampleMatCentered;
 
             % Calculate final calibration function
-            self.calibrationFcn = @(sample) (linearTransform * (sample(2:4)' - centroid))';
+            self.calibrationFcn = @(sample) (linearTransform * (sample(1:3)' - centroid))';
             
             % Save calibration details to manipulator_calibration.mat
             Date = datetime('today');
@@ -148,8 +147,8 @@ classdef PolhemusLiberty < ManipulatorInterface
                         break
                     end
                 end
-                lastHalfSecond = self.ringBuffer(:, 1) > (GetSecs - 0.5);
-                samples = self.ringBuffer(lastHalfSecond, 2:4);
+                lastHalfSecond = self.ringBuffer(:, 4) > (GetSecs - 0.5);
+                samples = self.ringBuffer(lastHalfSecond, 1:3);
                 varThreshold = 25 * max(var(samples));
                 KbReleaseWait;
 
@@ -159,8 +158,8 @@ classdef PolhemusLiberty < ManipulatorInterface
                     x = targets(1, ii); y = targets(2, ii);
                     while true
                         self.poll();
-                        lastHalfSecond = self.ringBuffer(:, 1) > (GetSecs - 0.5);
-                        samples = self.ringBuffer(lastHalfSecond, 2:4);
+                        lastHalfSecond = self.ringBuffer(:, 4) > (GetSecs - 0.5);
+                        samples = self.ringBuffer(lastHalfSecond, 1:3);
                         isMoving = any(var(samples) > varThreshold);
 
                         if self.display.asyncReady()
@@ -214,14 +213,15 @@ classdef PolhemusLiberty < ManipulatorInterface
             % Polls raw data bytes from the TCP client, checks if the data is complete, converts it
             % to numerical data, and saves it in the ring buffer.
             % OUTPUTS:
-            %    stateRaw - 1x4 vector of most recent sample (in mm), or empty if data was incomplete.
+            %    stateRaw - 1x4 vector of most recent sample (in mm), or empty if data was
+            %    incomplete, with a timestamp.
 
             stateRaw = [];
             rcvd_str = readline(self.client);
             rcvd_bytes = uint8(char(rcvd_str));
             if length(rcvd_bytes) ~= 40; return; end
             
-            stateRaw = [GetSecs, 25.4 * double(typecast(rcvd_bytes(17:28), 'single'))];
+            stateRaw = [25.4 * double(typecast(rcvd_bytes(17:28), 'single')), GetSecs];
             if length(stateRaw) ~= 4
                 stateRaw = [];
                 return
@@ -233,7 +233,7 @@ classdef PolhemusLiberty < ManipulatorInterface
 %             [x, y] = GetMouse(self.display.window);
 %             x = min(x, self.display.xMax) - self.display.xMax/2;
 %             y = -(min(y, self.display.yMax) - self.display.yMax/2);
-%             stateRaw = [GetSecs, x, y, 0];
+%             stateRaw = [x, y, 0, GetSecs];
 %             self.ringIdx = self.ringIdx + 1;
 %             self.ringBuffer(self.ringIdx, :) = stateRaw;
         end

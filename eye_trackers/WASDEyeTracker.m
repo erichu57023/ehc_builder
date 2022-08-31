@@ -34,8 +34,8 @@ classdef WASDEyeTracker < EyeTrackerInterface
         function successFlag = establish(self, display)
             self.display = display;
             successFlag = true;
-            self.state = [0, 0];
-            self.calibrationFcn = @(x) x(2:end);
+            self.state = [0, 0, 0, 0];
+            self.calibrationFcn = @(x) x(1:2);
             disp('WASDEyeTracker: established! Use WASD to control the eye tracker')
         end
 
@@ -51,13 +51,13 @@ classdef WASDEyeTracker < EyeTrackerInterface
         function state = poll(self)
             [~, ~, keyCode] = KbCheck();
             delta = self.delta_speed * [keyCode(self.dKey) - keyCode(self.aKey), keyCode(self.wKey) - keyCode(self.sKey)];
-            self.state = self.state + delta;
-            state = [GetSecs, self.state];
+            self.state = self.state + [delta, delta];
+            state = [self.state, GetSecs];
         end
 
         function driftCorrect(self)
             disp('WASDEyeTracker: drift-corrected')
-            self.state = [0, 0];
+            self.state = [0, 0, 0, 0];
         end
 
         function self = close(self); end

@@ -8,7 +8,7 @@ classdef EyeLink2 < EyeTrackerInterface
 %    establish - Establishes connection through PsychToolbox Eyelink interface.
 %    calibrate - Sends control to the Host PC to complete calibration/validation routines.
 %    available - Returns true if a sample is available for poll.
-%    poll - Returns the mean of currently active eyes, which the Eyelink has already converted to
+%    poll - Returns the XY data of both eyes, which the Eyelink has already converted to
 %       screen coordinates.
 %    driftCorrect - Sends a command to the Host PC to perform online zeroing.
 %    close - Shuts down the connection.
@@ -102,12 +102,19 @@ classdef EyeLink2 < EyeTrackerInterface
                 Eyelink('NewestFloatSample');
                 EyelinkDoTrackerSetup(self.settings);
                 Eyelink('StartRecording');
-                self.calibrationFcn = @(x) x(2:end);
+                self.calibrationFcn = @generateCalFcn;
 %                 self.xCorr = 0; self.yCorr = 0;   % For naive drift correction
                 disp('EyeLink2: calibrated')
                 successFlag = true;
             catch
                 successFlag = false;
+            end
+
+            function calSample = generateCalFcn(rawSample)
+                % Calculates the mean XY coordinate of all valid eye samples
+                xLR = rawSample([1,3]); yLR = rawSample([2,4]);
+                xLR = mean(xLR(xLR ~= -32768)); yLR = mean(yLR(yLR ~= -32768));
+                calSample = [xLR, yLR];
             end
         end
 
@@ -122,15 +129,14 @@ classdef EyeLink2 < EyeTrackerInterface
         function state = poll(self)
             % Poll the most recent sample.
             % OUTPUTS: 
-            %    state - a 1x3 vector containing a timestamp, and mean values for X and Y relative
-            %       to center coordinates across all active eyes.
+            %    state - a 1x5 vector containing [Lx, Ly, Rx, Ry, timestamp]
 
             sample = Eyelink('NewestFloatSample');
-            x = sample.gx(sample.gx ~= -32768); 
-            y = sample.gy(sample.gx ~= -32768);
-            x = mean(x) - self.display.xMax/2;
-            y = -mean(y) + self.display.yMax/2;
-            state = [GetSecs, x, y];
+            xLR = sample.gx; 
+            yLR = sample.gy;
+            xLR(xLR ~= -32768) = xLR(xLR ~= -32768) - self.display.xMax/2;
+            yLR(yLR ~= -32768) = -yLR(yLR ~= -32768) + self.display.yMax/2;
+            state = [xLR(1), yLR(1), xLR(2), yLR(2), GetSecs];
         end
 
         function driftCorrect(self)
