@@ -21,9 +21,9 @@ eyeTracker = WASDEyeTracker();
 % eyeTracker = EyeLink2();
     
 % Define one or more manipulators (see manipulators folder)
-% manipulator = [TouchScreenMouseCursor(), NoManipulator()];
+manipulator = [TouchScreenMouseCursor(), NoManipulator()];
 % manipulator = TouchScreenMouseCursor();
-manipulator = PolhemusLiberty();
+% manipulator = PolhemusLiberty();
 
 % Assign a background color as an 8-bit RGB value (0 to 255)
 background8BitRGB = [0, 0, 0];
