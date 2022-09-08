@@ -154,7 +154,7 @@ classdef DisplayManager < handle
             arguments
                 self
                 centerCoordsList (:, 2)
-                sizeList(:, 1) = 10 * ones(size(centerCoordsList, 1), 1);
+                sizeList (:, 1) = 10 * ones(size(centerCoordsList, 1), 1);
                 colorList (:, 3) = self.white * size(centerCoordsList, 1);
                 relativeTo (1, 2) = [self.xCenter, self.yCenter];
             end

@@ -199,6 +199,7 @@ classdef SingleShapeRingTrial < TrialInterface
             end
 
             % This runs every time.
+            if  any(isnan(manipState)) || any(isnan(eyeState)); conditionFlag = 0; return; end
             conditionFlag = self.checkFcn(manipState, eyeState);
             if conditionFlag == 1
                 self.successBeep();
@@ -216,7 +217,6 @@ classdef SingleShapeRingTrial < TrialInterface
             % target.
             targetLoc = self.target.Location;
             
-            if any(isnan(manipState)); conditionFlag = 0; return; end
             noReach = norm(manipState(1, 1:2)) <= self.distFromCenter/2;
             if ~noReach; conditionFlag = -1; return; end
             
@@ -229,7 +229,6 @@ classdef SingleShapeRingTrial < TrialInterface
             % target.
             targetLoc = self.target.Location;
             
-            if any(isnan(eyeState)); conditionFlag = 0; return; end
             noLook = norm(eyeState(1, 1:2)) <= self.distFromCenter/2;
             if ~noLook; conditionFlag = -1; return; end
             
@@ -252,7 +251,6 @@ classdef SingleShapeRingTrial < TrialInterface
                 % Start with a look-only segment.
                 conditionFlag = 0;
                 
-                if any(isnan(manipState)); conditionFlag = 0; return; end
                 noReach = norm(manipState(1, 1:2)) <= self.distFromCenter/2;
                 if ~noReach; conditionFlag = -1; return; end
             

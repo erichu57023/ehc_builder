@@ -99,14 +99,14 @@ classdef EyeLink2 < EyeTrackerInterface
             
             try
                 Eyelink('StopRecording');
-                Eyelink('NewestFloatSample');
-                EyelinkDoTrackerSetup(self.settings);
+                EyelinkDoTrackerSetup(self.settings, 'c');
                 Eyelink('StartRecording');
                 self.calibrationFcn = @generateCalFcn;
 %                 self.xCorr = 0; self.yCorr = 0;   % For naive drift correction
                 disp('EyeLink2: calibrated')
                 successFlag = true;
             catch
+                disp('EyeLink2: calibration failed')
                 successFlag = false;
             end
 

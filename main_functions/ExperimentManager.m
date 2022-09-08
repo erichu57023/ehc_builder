@@ -190,11 +190,13 @@ classdef ExperimentManager < handle
                                 KbReleaseWait;
                                 self.eyeTracker.driftCorrect();
                                 startTime = GetSecs;
+                                self.display.update();
                             elseif keyCode(KbName(self.calibrateKey))
                                 self.display.asyncEnd();
                                 KbReleaseWait;
                                 self.eyeTracker.calibrate();
                                 startTime = GetSecs;
+                                self.display.update();
                             end
 
                             % Poll the eye tracker
