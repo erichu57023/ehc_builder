@@ -84,7 +84,7 @@ classdef DisplayManager < handle
                 self.ifi = Screen('GetFlipInterval', self.window);
                 Screen('TextFont', self.window, 'Ariel');
                 Screen('TextSize', self.window, 50);
-                Screen('BlendFunction', self.window, 'GL_ONE', 'GL_DST_ALPHA');
+                Screen('BlendFunction', self.window, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
                 HideCursor(self.window);
                 Priority(MaxPriority(self.window));
 
@@ -93,7 +93,7 @@ classdef DisplayManager < handle
                 Snd('Open', self.audioDriver);
     
                 % Load shape textures into window for fast display
-                [bitmaps, self.vertices]= GenerateShapeBitmaps();
+                [bitmaps, self.vertices] = GenerateShapeBitmaps();
                 shapeNames = fieldnames(bitmaps);
                 for ii = 1:length(shapeNames)
                     self.textures.(shapeNames{ii}) = Screen('MakeTexture', self.window, bitmaps.(shapeNames{ii}));

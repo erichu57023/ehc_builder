@@ -16,7 +16,7 @@ function [bitmaps, vertices] = GenerateShapeBitmaps()
     GenerateTriangle();
     GenerateSquare();
     GenerateCross();
-
+    
     function GenerateCircle()
         % Adds the 'Circle' property to the bitmaps and vertices structs.
 
@@ -74,8 +74,8 @@ function [bitmaps, vertices] = GenerateShapeBitmaps()
         vrt = [x, y] ./ norm;
 
         mask = poly2mask(x_corrected, y_corrected, 256, 256);
-        lum = double(mask);
-        alpha = mask * 255;
+        lum = uint8(mask) * 255;
+        alpha = lum;
         bmp(:, :, 1) = lum;
         bmp(:, :, 2) = alpha;
     end
