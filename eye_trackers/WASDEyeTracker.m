@@ -19,7 +19,7 @@ classdef WASDEyeTracker < EyeTrackerInterface
     properties (Access = private)
         state
         display
-        delta_speed = 0.1;
+        delta_speed = 0.2;
     end
     properties (Constant)
         wKey = KbName('w');

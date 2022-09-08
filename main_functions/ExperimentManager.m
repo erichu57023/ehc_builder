@@ -157,10 +157,8 @@ classdef ExperimentManager < handle
                     cprintf('RED*','INTRO: %s to run drift correction, %s to run calibration\n', self.driftCorrKey, self.calibrateKey);
 
                     % Provide instructions and perform gaze correction on center target
+%                     self.eyeTracker.driftCorrect() 
                     playIntroPhase(); 
-
-                    % Correct for error in eye tracking data due to drift
-                    self.eyeTracker.driftCorrect() 
 
                     % Play the trial and record all data
                     playTrialPhase(); 
@@ -214,7 +212,7 @@ classdef ExperimentManager < handle
                             % Prime the target in the screen center
                             if self.display.asyncReady() > 0
                                 self.display.drawElements(trial.intro);
-                                self.display.drawDotsFastAt([manipCenterXYZ(1:2); eyeCenterXY]);
+                                self.display.drawDotsFastAt([manipCenterXYZ(1:2); eyeCenterXY], [10, 10], [255 255 255; 127 127 255]);
                                 self.display.updateAsync();
                             end
                             
@@ -245,6 +243,7 @@ classdef ExperimentManager < handle
                     end
                     manipTraceIdxs = ones(1, self.numManipulators);
                     manipCenterXYZs = nan(self.numManipulators, 3);
+                    eyeCenterXY = nan(1, 2);
                     
                     while (timestamp < trial.timeout)
                         % Poll the eye tracker

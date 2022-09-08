@@ -44,6 +44,7 @@ classdef SingleShapeRingTrial < TrialInterface
                         'Touch the target that matches that shape.'];
         startLookBeep = @(~) Beeper(400, 0.4, 0.1);
         successBeep = @(~) Beeper(1000, 0.4, 0.1);
+        failBeep = @(~) Beeper(200, 0.4, 0.1)
     end
 
     methods
@@ -201,6 +202,8 @@ classdef SingleShapeRingTrial < TrialInterface
             conditionFlag = self.checkFcn(manipState, eyeState);
             if conditionFlag == 1
                 self.successBeep();
+            elseif conditionFlag == -1
+                self.failBeep();
             end
         end
     end
@@ -213,11 +216,12 @@ classdef SingleShapeRingTrial < TrialInterface
             % target.
             targetLoc = self.target.Location;
             
+            if any(isnan(manipState)); conditionFlag = 0; return; end
             noReach = norm(manipState(1, 1:2)) <= self.distFromCenter/2;
             if ~noReach; conditionFlag = -1; return; end
             
             distFromTarget = norm(eyeState(1, 1:2) - targetLoc);
-            conditionFlag = distFromTarget <= self.target.Radius;
+            conditionFlag = distFromTarget <= self.target.Radius * 3;
         end
 
         function conditionFlag = checkReachOnly(self, manipState, eyeState)
@@ -225,6 +229,7 @@ classdef SingleShapeRingTrial < TrialInterface
             % target.
             targetLoc = self.target.Location;
             
+            if any(isnan(eyeState)); conditionFlag = 0; return; end
             noLook = norm(eyeState(1, 1:2)) <= self.distFromCenter/2;
             if ~noLook; conditionFlag = -1; return; end
             
@@ -247,11 +252,12 @@ classdef SingleShapeRingTrial < TrialInterface
                 % Start with a look-only segment.
                 conditionFlag = 0;
                 
+                if any(isnan(manipState)); conditionFlag = 0; return; end
                 noReach = norm(manipState(1, 1:2)) <= self.distFromCenter/2;
                 if ~noReach; conditionFlag = -1; return; end
             
                 distFromTarget = norm(eyeState(1, 1:2) - targetLoc);
-                if distFromTarget <= self.target.Radius
+                if distFromTarget <= self.target.Radius * 3
                     self.elements(self.numTargets + 1).ElementType = 'hide';
                     self.segment = 2;
                 end

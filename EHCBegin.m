@@ -17,8 +17,8 @@ PsychDefaultSetup(2);
 screenID = max(Screen('Screens'));
 
 % Define an eye tracker (see eye_trackers folder)
-eyeTracker = WASDEyeTracker();
-% eyeTracker = EyeLink2();
+% eyeTracker = WASDEyeTracker();
+eyeTracker = EyeLink2();
     
 % Define one or more manipulators (see manipulators folder)
 manipulator = [TouchScreenMouseCursor(), NoManipulator()];
@@ -34,10 +34,10 @@ manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, backgro
 % Add a set of trials (see trials folder)
 % manager.addTrial(EmptyTrial(60));
 
-manager.addTrial(SingleShapeRingTrial(3, 'look', 5, 1, 25));
-manager.addTrial(SingleShapeRingTrial(3, 'reach', 5, 1, 25));
-manager.addTrial(SingleShapeRingTrial(3, 'free', 5, 1, 25));
-manager.addTrial(SingleShapeRingTrial(3, 'segmented', 5, 1, 25));
+manager.addTrial(SingleShapeRingTrial(10, 'look', 5, 1, 25));
+manager.addTrial(SingleShapeRingTrial(10, 'reach', 5, 1, 25));
+manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 1, 25));
+manager.addTrial(SingleShapeRingTrial(10, 'segmented', 5, 1, 25));
 
 % manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 2, 25, 90));
 % manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 4, 25));
