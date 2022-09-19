@@ -4,6 +4,8 @@ classdef PolhemusLiberty < ManipulatorInterface
 % PROPERTIES:
 %    calibrationFcn - Converts XYZ position data to screen coordinates based on a calibration
 %       routine.
+%    homePosition - Raw XYZ of the designated home position.
+%    homeRadius - 3D radius of the designated home position in mm.
 %
 % METHODS:
 %    establish - Opens a TCP client on a port where six-axis P&O data is being published.
@@ -12,10 +14,14 @@ classdef PolhemusLiberty < ManipulatorInterface
 %    available - Returns true if a new sample is available on the TCP buffer to poll.
 %    poll - Poll and interpret most recent sample, and update an internal FIFO buffer of data for
 %       calibration purposes.
+%    reset - Does nothing.
+%    isHome - Checks if the most recent sample is in the home position.
 %    close - Flushes the TCP client.
 
     properties
         calibrationFcn
+        homePosition
+        homeRadius
     end
     properties (Access = private)
         display
@@ -28,10 +34,11 @@ classdef PolhemusLiberty < ManipulatorInterface
     end
 
     methods
-        function self = PolhemusLiberty(ipAddress, tcpPort, bufferSize, calibrationScale)
+        function self = PolhemusLiberty(ipAddress, tcpPort, homeRadius, bufferSize, calibrationScale)
             arguments
                 ipAddress {mustBeTextScalar} = 'localhost';
                 tcpPort (1,1) {mustBeInteger, mustBeNonnegative} = 7234;
+                homeRadius {mustBeFloat, mustBeScalarOrEmpty} = 15;
                 bufferSize (1,1) {mustBeInteger, mustBePositive} = 500;
                 calibrationScale (1,1) {mustBeFloat} = 0.5
             end
@@ -45,9 +52,12 @@ classdef PolhemusLiberty < ManipulatorInterface
 
             self.ipAddress = ipAddress;
             self.tcpPort = tcpPort;
+            self.homeRadius = homeRadius;
             self.ringSize = bufferSize;
             self.calibrationScale = calibrationScale;
             self.client = [];
+
+            self.homePosition = nan(1,3);
         end
 
         function successFlag = establish(self, display)
@@ -81,25 +91,27 @@ classdef PolhemusLiberty < ManipulatorInterface
             % Skip calibration if an existing calibration file is found
             if isfile('liberty_calibration.mat')
                 cprintf('text', 'Detected previous Liberty calibration, loading...\n')
-                load('liberty_calibration.mat', 'Date', 'CalibrationFunction');
+                load('liberty_calibration.mat', 'Date', 'CalibrationFunction', 'HomePosition');
                 
                 % Warn the experimenter if the calibration file is from a previous day
                 if Date ~= datetime('today')
                     warning('The provided Polhemus calibration is not from today. Output values may be inaccurate!');
                 end
                 self.calibrationFcn = CalibrationFunction;
+                self.homePosition = HomePosition;
                 successFlag = true;
                 return
             end
 
             self.display.update();
             
-            isMovingColor = [102, 102, 255; 255, 102, 102] / 255;
+            isMovingColor = [102, 102, 255; 255, 102, 102];
             targets = [[-1 0 1 -1 0 1 -1 0 1] * self.display.xCenter * self.calibrationScale; ...
                        [1 1 1 0 0 0 -1 -1 -1] * self.display.yCenter * self.calibrationScale];
-            
+
             % Run the 9-point calibration routine
-            sampleMat = hitCalibrationTargets()';
+            [sampleMat] = hitCalibrationTargets();
+            sampleMat = sampleMat';
             
             % Calculate vectors of XY points relative to centroid
             centroid = mean(sampleMat, 2);
@@ -122,10 +134,11 @@ classdef PolhemusLiberty < ManipulatorInterface
             % Save calibration details to manipulator_calibration.mat
             Date = datetime('today');
             CalibrationFunction = self.calibrationFcn;
-            save('liberty_calibration.mat', 'Date', 'CalibrationFunction');
+            HomePosition = self.homePosition;
+            save('liberty_calibration.mat', 'Date', 'CalibrationFunction', 'HomePosition');
 
             successFlag = true;
-
+            
             function sampleMat = hitCalibrationTargets()
                 % Handles display of 9 targets positioned in the same aspect ratio as the experiment 
                 % display.
@@ -139,7 +152,7 @@ classdef PolhemusLiberty < ManipulatorInterface
                 while true
                     self.poll();
                     if self.display.asyncReady()
-                        self.display.drawDotsFastAt([0, 0], 63, isMovingColor(2, :));
+                        self.display.drawDotsFastAt([0, 0], 63, isMovingColor(1, :) / 255);
                         self.display.updateAsync();
                     end
                     [~, ~, keyCode] = KbCheck();
@@ -163,7 +176,7 @@ classdef PolhemusLiberty < ManipulatorInterface
                         isMoving = any(var(samples) > varThreshold);
 
                         if self.display.asyncReady()
-                            self.display.drawDotsFastAt([x, y], 63, isMovingColor(isMoving + 1, :));
+                            self.display.drawDotsFastAt([x, y], 63, isMovingColor(isMoving + 1, :) / 255);
                             self.display.updateAsync();
                         end
                         [~, ~, keyCode] = KbCheck();
@@ -174,6 +187,39 @@ classdef PolhemusLiberty < ManipulatorInterface
                     end
                     sampleMat(matIdx, :) = mean(samples);
                     matIdx = matIdx + 1;
+                end
+
+                hitHomePosition();
+
+                function hitHomePosition()
+                    % Generate home text element
+                    homeText.ElementType = 'text';
+                    homeText.Location = [0, 0];
+                    homeText.Text = 'HOME';
+                    homeText.Font = 'Consolas';
+                    homeText.FontSize = 40;
+                    homeText.VerticalSpacing = 1;
+    
+                    % Gather data for home position
+                    while true
+                        self.poll();
+                        lastHalfSecond = self.ringBuffer(:, 4) > (GetSecs - 0.5);
+                        samples = self.ringBuffer(lastHalfSecond, 1:3);
+                        isMoving = any(var(samples) > varThreshold);
+                        homeText.Color = isMovingColor(isMoving + 1, :);
+    
+                        if self.display.asyncReady()
+                            self.display.drawElements(homeText)
+                            self.display.updateAsync();
+                        end
+                        [~, ~, keyCode] = KbCheck();
+                        if (keyCode(32) && ~isMoving)
+                            KbReleaseWait;
+                            break
+                        end
+                    end
+                    self.display.asyncEnd();
+                    self.homePosition = mean(samples);
                 end
             end
         end
@@ -197,6 +243,19 @@ classdef PolhemusLiberty < ManipulatorInterface
             if isempty(state)       % Returns most recent complete sample if newest poll is incomplete data
                 state = self.ringBuffer(max(self.ringIdx, 1), :);
             end
+        end
+
+        function reset(self)
+            % Does nothing.
+        end
+
+        function homeFlag = isHome(self)
+            % Checks if the last polled sample is within the home position.
+            % OUTPUTS:
+            %    homeFlag - Returns true if the most recent sample is in the home position.
+            
+            stateXYZ = self.ringBuffer(max(self.ringIdx, 1), 1:3);
+            homeFlag = norm(stateXYZ - self.homePosition) <= self.homeRadius;
         end
 
         function close(self)

@@ -1,4 +1,5 @@
 
+
 # ehc_builder
 
 This codebase is designed to run eye-hand coordination (EHC) experiments using the Psychtoolbox library in Matlab. It provides a common interface for users to implement their own trials, eye trackers and manipulators, and includes a few basic trial types as examples.
@@ -10,8 +11,8 @@ EHC experiments primarily consist of a series of `Trials`, which present distinc
 * Pre-trial:
   1. `establish()` connections to all `EyeTracker` and `Manipulator` instances, and perform `calibrate()` routines as necessary.
   2. Before each round of a trial, call `Trial.generate()`, which generates a list of on-screen elements while defining the conditions necessary for success/failure.
-  3. Display a set of elements defined in `Trial.intro`, while checking that the *primary* `Manipulator` (the first one specified) is in a designated start position (usually a target in the center of the screen). Instruct the player that they should fix their vision upon this target, and display other text instructions if necessary.
-  4. After the *primary* `Manipulator` has been held on the center target for a short time, zero the incoming eye-tracker data to the center of the screen, a process known as *drift correction*. The trial is now ready to begin.
+  3. Display a set of elements defined in `Trial.intro`, while checking that the *primary* `Manipulator` (the first one specified) is in a designated home position (this is usually set in calibration). Instruct the player that they should fixate on a visual target, and display other text instructions if necessary.
+  4. The trial will begin when both the *primary* `Manipulator` and the eye tracker have been held on the home position for a short time. Here, the operator may choose to manually zero the incoming eye-tracker data to the visual target --- a process known as *drift correction* --- or recalibrate the eye-tracker entirely.
 * Trial:
   1. `poll()` data from both the `EyeTracker` and the `Manipulators`, if it is `available()`.
   2. Apply the calibration functions of both devices to the incoming raw data, to convert it from the sensor domain to the screen domain.
@@ -50,7 +51,7 @@ All trial classes must inherit from and implement the provided `TrialInterface`;
 
 Flexibility in trial paradigms can be coded into each trial, by writing custom `check()` subfunctions. For example, the `SingleShapeRingTrial` currently has 4 supported paradigms:
 1. *Look-only*: the eye tracker is used to hit targets, and moving the manipulator too far out of home position results in a failure. A visual cue (disappearance of the center target) signals that the player may begin gazing.
-2. *Reach-only*: the manipulator is used to hit targets, and gazing too far away from the screen center results in a failure. (**TODO**: An auditory cue signals that the player may begin reaching.)
+2. *Reach-only*: the manipulator is used to hit targets, and gazing too far away from the screen center results in a failure. An auditory cue signals that the player may begin reaching.
 3. *Free*: the manipulator is used to hit targets, and gaze can travel anywhere without restriction. Both cues are presented simultaneously at the start of each trial.
 4. *Segmented*: split into two segments, consisting of a look-only segment (visual cue) followed by a free reach (audio cue).
 
@@ -92,9 +93,13 @@ When starting an experiment, the user will be queried for their initials; this w
 * `EyeTracker`: (struct) contains information about the eye tracker that was used
 	* `Class`: (char) the name of the eye tracker class
 	* `calibrationFcn`: (function_handle) a function that, when applied to raw sensor samples, converts them into screen-space coordinates; the first two columns of the output vector must be XY pixel coordinates relative to screen center
+	* `homePosition`: (1x2 int) the XY coordinate used as a target for beginning trials
+	* `homeRadius`: (int) the radius of the home zone
 * `Manipulators`: (struct) contains information about the manipulator that was used
 	* `Class`: (1x**M** cell) the names of all manipulator classes, in the order they were created
 	* `calibrationFcn`: (1x**M** cell) functions for each manipulator that, when applied to raw sensor samples, convert them into screen-space coordinates; the first two columns of the output vector must be XY pixel coordinates relative to screen center
+	* `homePosition`: (1x**M** cell) the XYZ coordinates used as home positions for beginning trials
+	* `homeRadius`: (1x**M** cell) the radius of the home zone
 * `TrialData`: (1x**N** struct) contains information about the trials that were run, and the data collected during each trial
 	* `NumRounds`: (int) the number of rounds in the trial **R**
 	* `Timeout`: (double) the number of seconds that was set as the trial timeout
@@ -123,4 +128,4 @@ When starting an experiment, the user will be queried for their initials; this w
 * Add a way to force calibration functions to run each time even if calibration files are present, to avoid having to delete them each time.
 * Allow multiple eye trackers to be specified.
 ---
-Last updated: August 29, 2022 by Eric Hu
+Last updated: September 19, 2022 by Eric Hu

@@ -3,6 +3,8 @@ classdef EyeLink2 < EyeTrackerInterface
 %
 % PROPERTIES:
 %    calibrationFcn - Simply strips the timestamps from the raw data.
+%    homePosition - Always set to [0, 0]
+%    homeRadius - Radius of the home position in pixels.
 %
 % METHODS:
 %    establish - Establishes connection through PsychToolbox Eyelink interface.
@@ -11,19 +13,29 @@ classdef EyeLink2 < EyeTrackerInterface
 %    poll - Returns the XY data of both eyes, which the Eyelink has already converted to
 %       screen coordinates.
 %    driftCorrect - Sends a command to the Host PC to perform online zeroing.
+%    isHome - Checks if most recent sample is in home position.
 %    close - Shuts down the connection.
 
     properties
         calibrationFcn
+        homePosition = [0, 0];
+        homeRadius
     end
     properties (Access = private)
+        state
         display
         settings
 %         xCorr; yCorr; % For naive drift correction
     end
 
     methods
-        function self = EyeLink2(); end
+        function self = EyeLink2(homeRadius)
+            arguments
+                homeRadius {mustBeFloat, mustBeScalarOrEmpty} = 75;
+            end
+            self.homeRadius = homeRadius;
+            self.state = [nan, nan, nan, nan, GetSecs];
+        end
 
         function successFlag = establish(self, display)
             % Configures settings and establishes connection through PsychToolbox Eyelink interface.
@@ -137,6 +149,7 @@ classdef EyeLink2 < EyeTrackerInterface
             xLR(xLR ~= -32768) = xLR(xLR ~= -32768) - self.display.xMax/2;
             yLR(yLR ~= -32768) = -yLR(yLR ~= -32768) + self.display.yMax/2;
             state = [xLR(1), yLR(1), xLR(2), yLR(2), GetSecs];
+            self.state = state;
         end
 
         function driftCorrect(self)
@@ -148,6 +161,16 @@ classdef EyeLink2 < EyeTrackerInterface
 
             Eyelink('Command', 'online_dcorr_trigger');
             disp('EyeLink2: drift corrected')
+        end
+
+        function homeFlag = isHome(self)
+            % Check if most recent sample is in home position.
+            % OUTPUTS: 
+            %    homeFlag - Returns true if most recent sample is within a threshold of home
+            %    position.
+
+            stateXY = self.calibrationFcn(self.state);
+            homeFlag = norm(stateXY - self.homePosition) <= self.homeRadius;
         end
 
         function close(self)

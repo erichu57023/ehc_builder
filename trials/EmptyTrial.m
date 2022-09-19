@@ -50,15 +50,8 @@ classdef EmptyTrial < TrialInterface
             self.failzone = struct([]);
         end
 
-        function conditionFlag = check(self, manipState, eyeState)
-            % Generates a conditionFlag based on input state.
-            % INPUTS:
-            %    manipState - A vector whose first three columns are XYZ data, with XY in screen 
-            %       coordinates.
-            %    eyeState - A vector whose first twp columns are XY data, with XY in screen 
-            %       coordinates.
-            % OUTPUTS:
-            %    conditionFlag - 1 if success (state within target position), 0 if timeout.
+        function conditionFlag = check(self, ~, ~, ~, ~)
+            % Returns true if any key is pressed.
             
             conditionFlag = KbCheck; % Keyboard press
         end

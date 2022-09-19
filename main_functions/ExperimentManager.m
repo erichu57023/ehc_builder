@@ -27,8 +27,8 @@ classdef ExperimentManager < handle
     properties (Constant, Access = private)
         driftCorrKey = 'M';
         calibrateKey = 'N';
-        introTargetRadius = 50;
-        hasLeftCenter = @(x) norm(x) >= ExperimentManager.introTargetRadius * 2;
+        escapeKey = 'Escape';
+        activeKeys = arrayfun(@KbName, {ExperimentManager.driftCorrKey, ExperimentManager.calibrateKey, ExperimentManager.escapeKey});
     end
 
     methods
@@ -92,11 +92,15 @@ classdef ExperimentManager < handle
             if ~self.eyeTracker.establish(self.display); return; end
             if ~self.eyeTracker.calibrate(); return; end
             self.data.EyeTracker.calibrationFcn = self.eyeTracker.calibrationFcn;
+            self.data.EyeTracker.homePosition = self.eyeTracker.homePosition;
+            self.data.EyeTracker.homeRadius = self.eyeTracker.homeRadius;
 
             % Set up manipulators
             if ~all(self.manipulators.establishAll(self.display)); return; end
             if ~all(self.manipulators.calibrateAll()); return; end
             self.data.Manipulators.calibrationFcn = arrayfun(@(obj)obj.calibrationFcn, self.manipulators, 'UniformOutput', false);
+            self.data.Manipulators.homePosition = arrayfun(@(obj)obj.homePosition, self.manipulators, 'UniformOutput', false);
+            self.data.Manipulators.homeRadius = arrayfun(@(obj)obj.homeRadius, self.manipulators, 'UniformOutput', false);
 
             successFlag = true;
         end
@@ -154,11 +158,16 @@ classdef ExperimentManager < handle
 
                     % Tell the operator that they can perform drift correction/calibration during
                     % intro phase.
-                    cprintf('RED*','INTRO: %s to run drift correction, %s to run calibration\n', self.driftCorrKey, self.calibrateKey);
+                    cprintf('RED*','%s to run drift correction, %s to run calibration, %s to terminate\n', self.driftCorrKey, self.calibrateKey, self.escapeKey);
 
                     % Provide instructions and perform gaze correction on center target
 %                     self.eyeTracker.driftCorrect() 
                     playIntroPhase(); 
+
+                    % Reset all non-primary manipulators
+                    if self.numManipulators > 1
+                        self.manipulators(2:end).resetAll();
+                    end
 
                     % Play the trial and record all data
                     playTrialPhase(); 
@@ -184,20 +193,7 @@ classdef ExperimentManager < handle
                         while (GetSecs - startTime < readySetGo)
                             % Check if operator wants to do eye tracker drift-correction or
                             % recalibration
-                            [~, ~, keyCode] = KbCheck();
-                            if keyCode(KbName(self.driftCorrKey))
-                                self.display.asyncEnd();
-                                KbReleaseWait;
-                                self.eyeTracker.driftCorrect();
-                                startTime = GetSecs;
-                                self.display.update();
-                            elseif keyCode(KbName(self.calibrateKey))
-                                self.display.asyncEnd();
-                                KbReleaseWait;
-                                self.eyeTracker.calibrate();
-                                startTime = GetSecs;
-                                self.display.update();
-                            end
+                            operatorInterruptCheck();
 
                             % Poll the eye tracker
                             if self.eyeTracker.available()
@@ -218,11 +214,32 @@ classdef ExperimentManager < handle
                                 self.display.updateAsync();
                             end
                             
-                            % Reset timer if manipulator is not in center target
-                            distFromCenter = norm(manipCenterXYZ(1:2));
-                            if distFromCenter > self.introTargetRadius
+                            % Reset timer if manipulator and eye tracker are not in home position
+                            if ~(self.manipulators(1).isHome && self.eyeTracker.isHome)
                                 startTime = GetSecs;
                             end
+                        end
+                    end
+
+                    function operatorInterruptCheck()
+                        % Checks if operator presses a keyboard button
+                        [~, ~, keyCode] = KbCheck();
+                        if any(ismember(find(keyCode), self.activeKeys))
+                            self.display.asyncEnd();
+                            KbReleaseWait;
+                            
+                            if keyCode(KbName(self.driftCorrKey))
+                                self.eyeTracker.driftCorrect();
+                            elseif keyCode(KbName(self.calibrateKey))
+                                self.eyeTracker.calibrate();
+                            elseif keyCode(KbName(self.escapeKey))
+                                self.close();
+                                sca;
+                                error('ExperimentManager:manualTermination', '%s detected, only the last completed trial will be saved', self.escapeKey);
+                            end
+
+                            startTime = GetSecs;
+                            self.display.update();
                         end
                     end
                 end
@@ -255,6 +272,7 @@ classdef ExperimentManager < handle
                             eyeTraceIdx = eyeTraceIdx + 1;
                             eyeCenterXY = self.eyeTracker.calibrationFcn(eyeRawState);
                         end
+                        eyeHomeFlag = self.eyeTracker.isHome();
 
                         % Poll all manipulators
                         for kk = 1 : self.numManipulators
@@ -265,15 +283,16 @@ classdef ExperimentManager < handle
                                 manipCenterXYZs(kk, :) = self.manipulators(kk).calibrationFcn(manipRawStates{kk});
                             end
                         end
+                        manipHomeFlags = self.manipulators.isHomeAll();
                         
                         % Only start the timeout timer if the player has moved either eye tracker or
                         % manipulator out of the central zone
-                        if (startTime == inf) && (self.hasLeftCenter(eyeCenterXY) || self.hasLeftCenter(manipCenterXYZs(1, 1:2)))
+                        if (startTime == inf) && ~(self.eyeTracker.isHome() && manipHomeFlags(1))
                             startTime = GetSecs;
                         end
 
                         % End if a pass/fail condition is met
-                        outcome = trial.check(manipCenterXYZs, eyeCenterXY);
+                        outcome = trial.check(manipCenterXYZs, eyeCenterXY, manipHomeFlags, eyeHomeFlag);
                         if outcome ~= 0; break; end
                         
                         % Prepare the next frame to draw

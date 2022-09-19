@@ -3,6 +3,8 @@ classdef NoEyeTracker < EyeTrackerInterface
 %
 % PROPERTIES:
 %    calibrationFcn - Simply strips the timestamps from the raw data.
+%    homePosition - Always set to [0, 0].
+%    homeRadius - Always set to Inf.
 %
 % METHODS:
 %    establish - Does nothing.
@@ -10,10 +12,13 @@ classdef NoEyeTracker < EyeTrackerInterface
 %    available - Does nothing.
 %    poll - Always returns [0, 0, 0, 0, timestamp]
 %    driftCorrect - Does nothing.
+%    isHome - Always returns true.
 %    close - Does nothing.
 
     properties
         calibrationFcn
+        homePosition = [0, 0];
+        homeRadius = Inf;
     end
     properties (Access = private)
         state
@@ -46,6 +51,10 @@ classdef NoEyeTracker < EyeTrackerInterface
 
         function driftCorrect(self)
             disp('NoEyeTracker: drift-corrected')
+        end
+
+        function homeFlag = isHome(self)
+            homeFlag = true;
         end
 
         function self = close(self); end

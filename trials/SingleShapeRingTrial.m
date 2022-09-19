@@ -171,13 +171,16 @@ classdef SingleShapeRingTrial < TrialInterface
             self.preCheck = 0;
         end
 
-        function conditionFlag = check(self, manipState, eyeState)
+        function conditionFlag = check(self, manipState, eyeState, manipHomeFlags, eyeHomeFlag)
             % Generates a conditionFlag based on input state. 
             % INPUTS:
             %    manipState - A vector whose first three columns are XYZ data, with XY in screen 
             %       coordinates. Each row corresponds to a unique manipulator.
             %    eyeState - A vector whose first two columns are XY data, with XY in screen 
             %       coordinates.
+            %    manipHomeFlags - A boolean that indicates if manipulators are in home positions.
+            %    eyeHomeFlag - A boolean that indicates if eye tracker is in home position.
+            %
             % OUTPUTS:
             %    conditionFlag - 1 if success (state within target position), 0 if timeout.
 
@@ -199,8 +202,10 @@ classdef SingleShapeRingTrial < TrialInterface
             end
 
             % This runs every time.
-            if  any(isnan(manipState)) || any(isnan(eyeState)); conditionFlag = 0; return; end
-            conditionFlag = self.checkFcn(manipState, eyeState);
+            if any(isnan(manipState), 'all') || any(isnan(eyeState), 'all'); conditionFlag = 0; return; end
+
+            % Only check the end-trial manipulator (the last one in the list)
+            conditionFlag = self.checkFcn(manipState, eyeState, manipHomeFlags, eyeHomeFlag);
             if conditionFlag == 1
                 self.successBeep();
             elseif conditionFlag == -1
@@ -212,38 +217,38 @@ classdef SingleShapeRingTrial < TrialInterface
     methods (Access = private)
         % Split into different check functions for each trial type for runtime efficiency.
 
-        function conditionFlag = checkLookOnly(self, manipState, eyeState)
+        function conditionFlag = checkLookOnly(self, ~, eyeState, manipHomeFlags, ~)
             % Checks if the look is on-target, and fails if the manipulator leaves the center 
             % target.
             targetLoc = self.target.Location;
             
-            noReach = norm(manipState(1, 1:2)) <= self.distFromCenter/2;
+            noReach = manipHomeFlags(1);
             if ~noReach; conditionFlag = -1; return; end
             
-            distFromTarget = norm(eyeState(1, 1:2) - targetLoc);
+            distFromTarget = norm(eyeState(1:2) - targetLoc);
             conditionFlag = distFromTarget <= self.target.Radius * 3;
         end
 
-        function conditionFlag = checkReachOnly(self, manipState, eyeState)
+        function conditionFlag = checkReachOnly(self, manipState, ~, ~, eyeHomeFlag)
             % Checks if the reach is on-target, and fails if the eye position leaves the center 
             % target.
             targetLoc = self.target.Location;
             
-            noLook = norm(eyeState(1, 1:2)) <= self.distFromCenter/2;
+            noLook = eyeHomeFlag;
             if ~noLook; conditionFlag = -1; return; end
             
-            distFromTarget = norm(manipState(1, 1:2) - targetLoc);
+            distFromTarget = norm(manipState(end, 1:2) - targetLoc);
             conditionFlag = distFromTarget <= self.target.Radius;
         end
 
-        function conditionFlag = checkFree(self, manipState, eyeState)
+        function conditionFlag = checkFree(self, manipState, ~, ~, ~)
             % Checks if the reach is on-target, with no fail condition.
             targetLoc = self.target.Location;
-            distFromTarget = norm(manipState(1, 1:2) - targetLoc);
+            distFromTarget = norm(manipState(end, 1:2) - targetLoc);
             conditionFlag = distFromTarget <= self.target.Radius;
         end
 
-        function conditionFlag = checkSegmented(self, manipState, eyeState)
+        function conditionFlag = checkSegmented(self, manipState, eyeState, manipHomeFlags, ~)
             % First checks if look is on-target, and then begins a reach check.
             targetLoc = self.target.Location;
 
@@ -251,17 +256,17 @@ classdef SingleShapeRingTrial < TrialInterface
                 % Start with a look-only segment.
                 conditionFlag = 0;
                 
-                noReach = norm(manipState(1, 1:2)) <= self.distFromCenter/2;
+                noReach = manipHomeFlags(1);
                 if ~noReach; conditionFlag = -1; return; end
             
-                distFromTarget = norm(eyeState(1, 1:2) - targetLoc);
+                distFromTarget = norm(eyeState(1:2) - targetLoc);
                 if distFromTarget <= self.target.Radius * 3
                     self.elements(self.numTargets + 1).ElementType = 'hide';
                     self.segment = 2;
                 end
             elseif (self.segment == 2)
                 % End with a free-reach segment.
-                distFromTarget = norm(manipState(1, 1:2) - targetLoc);
+                distFromTarget = norm(manipState(end, 1:2) - targetLoc);
                 conditionFlag = distFromTarget <= self.target.Radius;
             end
         end

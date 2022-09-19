@@ -3,16 +3,22 @@ classdef NoManipulator < ManipulatorInterface
 %
 % PROPERTIES:
 %    calibrationFcn - Simply strips the timestamps from the raw data.
+%    homePosition - Always set to [0, 0, 0]
+%    homeRadius - Always set to Inf.
 %
 % METHODS:
 %    establish - Does nothing.
 %    calibrate - Does nothing.
 %    available - Does nothing.
 %    poll - Always returns [0, 0, 0, timestamp]
+%    reset - Does nothing.
+%    isHome - Always returns true.
 %    close - Does nothing.
 
     properties
         calibrationFcn
+        homePosition = [0, 0, 0];
+        homeRadius = Inf;
     end
     properties (Access = private)
         display
@@ -39,6 +45,12 @@ classdef NoManipulator < ManipulatorInterface
 
         function state = poll(self)
             state = [zeros(1,3), GetSecs]; 
+        end
+
+        function reset(self); end
+
+        function homeFlag = isHome(self)
+            homeFlag = true;
         end
 
         function close(self); end

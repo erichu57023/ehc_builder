@@ -186,7 +186,7 @@ classdef NavonTask < TrialInterface
             end
         end
 
-        function conditionFlag = check(self, manipState, eyeState)
+        function conditionFlag = check(self, manipState, ~, ~, ~)
             % Generates a conditionFlag based on input state.
             % INPUTS:
             %    manipState - A vector whose first three columns are XYZ data, with XY in screen 

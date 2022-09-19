@@ -18,13 +18,13 @@ screenID = max(Screen('Screens'));
 
 % Define an eye tracker (see eye_trackers folder)
 % eyeTracker = NoEyeTracker();
-% eyeTracker = WASDEyeTracker();
-eyeTracker = EyeLink2();
+eyeTracker = WASDEyeTracker();
+% eyeTracker = EyeLink2();
     
 % Define one or more manipulators (see manipulators folder)
-% manipulator = [TouchScreenMouseCursor(), NoManipulator()];
 manipulator = TouchScreenMouseCursor();
 % manipulator = PolhemusLiberty();
+% manipulator = [PolhemusLiberty(), TouchScreenMouseCursor()];
 
 % Assign a background color as an 8-bit RGB value (0 to 255)
 background8BitRGB = [0, 0, 0];
@@ -43,19 +43,24 @@ manager.addTrial(SingleShapeRingTrial(10, 'segmented', 5, 1, 25));
 % manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 2, 25, 90));
 % manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 4, 25));
 % manager.addTrial(SingleShapeRingTrial(10, 'free', 5, 8, 25));
-% 
+
 % manager.addTrial(NavonTask(10, 5, "random"))
 % manager.addTrial(NavonTask(10, 5, "local"))
 % manager.addTrial(NavonTask(10, 5, "global"))
 % 
 % manager.addTrial(TraceShapeTrial(1, 15, 'Random', 200))
 
-
-% Run the experiment
-if manager.calibrate()
-    manager.run();
+try
+    % Run the experiment 
+    if manager.calibrate()
+        manager.run();
+    end
+    manager.close();
+catch exception
+    % Close open windows
+    sca;
+    rethrow(exception)
 end
-manager.close();
 
 % Display output data
 outputData = manager.data;
