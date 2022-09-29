@@ -3,15 +3,18 @@ classdef TraceShapeTrial < TrialInterface
 
 % PROPERTIES:
 %    numRounds - The number of rounds to generate in this set of trials.
+%    trialType - A specifier indicating how the look and reach portions of the trial should be
+%       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
+%       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the trial should run until a timeout is triggered.
-%    intro - Includes 2 elements: a center target letter and instructions.
+%    instructions - A struct containing elements to be displayed during the instruction phase of the
+%       current trial.
+%    preRound - Includes 2 elements: a center target letter and instructions.
 %    elements - Includes 2 formatted text boxes with Navon elements.
 %    target - Defines the correct Navon element
 %    failzone - Defines elements whose surrounding zones are failure zones.
 %    allowedShapes (Constant) - Defines the names of all allowed shapes, which are used to specify 
 %        textures to be drawn by a DisplayManager.
-%    instructions (Constant) - The text to be displayed in the instruction text box during the intro
-%        phase.
 %    requiredSweepDegrees (Constant) - The angular distance in degrees that the user must trace
 %        through before the trial may be counted as complete.
 %
@@ -23,7 +26,8 @@ classdef TraceShapeTrial < TrialInterface
         numRounds
         trialType
         timeout
-        intro
+        instructions
+        preRound
         elements
         target
         failzone
@@ -37,8 +41,6 @@ classdef TraceShapeTrial < TrialInterface
     end
     properties(Constant)
         allowedShapes = {'Circle', 'Triangle', 'Square', 'Cross'};
-        instructions = ['To begin, hold your cursor on the target. A shape will appear.', newline ...
-                        'Trace the outline of the shape, and return to the center target.'];
         requiredSweepDegrees = 360;
     end
 
@@ -65,6 +67,7 @@ classdef TraceShapeTrial < TrialInterface
             self.shapeType = shapeType;
             self.shapeRadius = shapeRadius;
             self.thresholdRadius = shapeRadius / 4;
+            self.generateInstructions();
         end
         
         function generate(self)
@@ -84,26 +87,18 @@ classdef TraceShapeTrial < TrialInterface
             self.elements(1).LineWidth = 2;
 
             self.target = self.elements(1);            
-            generateIntro();
+            generatePreRound();
             self.hasBegun = false;
             self.hasFinished = false;
 
-            function generateIntro()
-                % Create intro screen based on the target shape
+            function generatePreRound()
+                % Create pre-round screen based on the target shape
                 
-                self.intro(1).ElementType = 'texture';
-                self.intro(1).Shape = self.elements(1).Shape;
-                self.intro(1).Location = [0, 0];
-                self.intro(1).Radius = 25;
-                self.intro(1).Color = [255, 255, 255];
-
-                self.intro(2).ElementType = 'text';
-                self.intro(2).Location = [0, 400];
-                self.intro(2).Text = self.instructions;
-                self.intro(2).Color = [255 255 255];
-                self.intro(2).Font = 'Consolas';
-                self.intro(2).FontSize = 40;
-                self.intro(2).VerticalSpacing = 2;
+                self.preRound.ElementType = 'texture';
+                self.preRound.Shape = self.elements(1).Shape;
+                self.preRound.Location = [0, 0];
+                self.preRound.Radius = 25;
+                self.preRound.Color = [255, 255, 255];
             end
         end
 
@@ -156,6 +151,25 @@ classdef TraceShapeTrial < TrialInterface
                     self.hasFinished = true;
                 end
             end
+        end
+    end
+
+    methods (Access = private)
+        function generateInstructions(self)
+            % Places instruction text in the center of the screen
+
+            self.instructions.ElementType = 'text';
+            self.instructions.Location = [0, 0];
+            self.instructions.Color = [255 255 255];
+            self.instructions.Font = 'Ariel';
+            self.instructions.FontSize = 40;
+            self.instructions.VerticalSpacing = 2;
+            
+            instructText = ['Trace shape task', newline, ...
+                'The outline of a shape matching the center target will appear.', newline, ...
+                'Trace the shape until the center target reappears, and return to the center.'];
+
+            self.instructions.Text = instructText;
         end
     end
 end

@@ -8,14 +8,14 @@ classdef SingleShapeRingTrial < TrialInterface
 %       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
 %       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the trial should run until a timeout is triggered
-%    intro - Includes 2 elements: a center target shape and instructions
-%    elements -Includes a specified number of shapes arranged in a ring pattern.
+%    instructions - A struct containing elements to be displayed during the instruction phase of the
+%       current trial.
+%    preRound - Includes 2 elements: a center target shape and instructions
+%    elements - Includes a specified number of shapes arranged in a ring pattern.
 %    target - Defines the target shape whose surrounding zone is a pass zone.
 %    failzone - Defines target shapes whose surrounding zones are failure zones.
 %    allowedShapes (Constant) - Defines the names of all allowed shapes, which are used to specify 
 %        textures to be drawn by a DisplayManager.
-%    instructions (Constant) - The text to be displayed in the instruction text box during the intro
-%        phase.
 %
 % METHODS:
 %    generate - Populates all element variables with new shapes and locations each round.
@@ -25,7 +25,8 @@ classdef SingleShapeRingTrial < TrialInterface
         numRounds
         trialType
         timeout
-        intro
+        instructions
+        preRound
         elements
         target
         failzone
@@ -39,12 +40,9 @@ classdef SingleShapeRingTrial < TrialInterface
     end
     properties(Constant)
         allowedShapes = {'Circle', 'Triangle', 'Square', 'Cross'};
-        instructions = ['To begin, hold your cursor on the shape.', newline ...
-                        'A number of targets will appear.', newline ...
-                        'Touch the target that matches that shape.'];
-        startLookBeep = @(~) Beeper(400, 0.4, 0.1);
-        successBeep = @(~) Beeper(1000, 0.4, 0.1);
-        failBeep = @(~) Beeper(200, 0.4, 0.1)
+        startLookBeep = @(~) Beeper(400, 0.7, 0.1);
+        successBeep = @(~) Beeper(1000, 0.7, 0.1);
+        failBeep = @(~) Beeper(200, 0.7, 0.1)
     end
 
     methods
@@ -94,6 +92,7 @@ classdef SingleShapeRingTrial < TrialInterface
             self.targetRadius = targetRadius;
             self.distFromCenter = distFromCenter;
             self.axis = axis;
+            self.generateInstructions();
         end
         
         function generate(self)
@@ -155,16 +154,9 @@ classdef SingleShapeRingTrial < TrialInterface
             self.elements(self.numTargets + 1) = self.target;
             self.elements(self.numTargets + 1).Location = [0, 0];
 
-            % Populate the intro struct and change the center shape based on the target shape
-            self.intro = self.target;
-            self.intro.Location = [0, 0];
-            self.intro(2).ElementType = 'text';
-            self.intro(2).Location = [0, 400];
-            self.intro(2).Text = self.instructions;
-            self.intro(2).Color = [255 255 255];
-            self.intro(2).Font = 'Consolas';
-            self.intro(2).FontSize = 40;
-            self.intro(2).VerticalSpacing = 2;
+            % Populate the preRound struct and change the center shape based on the target shape
+            self.preRound = self.target;
+            self.preRound.Location = [0, 0];
 
             % Reset the segment stage for segmented mode.
             self.segment = 1;
@@ -215,7 +207,7 @@ classdef SingleShapeRingTrial < TrialInterface
     end
 
     methods (Access = private)
-        % Split into different check functions for each trial type for runtime efficiency.
+        % self.check() split into different check functions for each trial type for runtime efficiency.
 
         function conditionFlag = checkLookOnly(self, ~, eyeState, manipHomeFlags, ~)
             % Checks if the look is on-target, and fails if the manipulator leaves the center 
@@ -226,7 +218,7 @@ classdef SingleShapeRingTrial < TrialInterface
             if ~noReach; conditionFlag = -1; return; end
             
             distFromTarget = norm(eyeState(1:2) - targetLoc);
-            conditionFlag = distFromTarget <= self.target.Radius * 3;
+            conditionFlag = distFromTarget <= self.target.Radius * 2;
         end
 
         function conditionFlag = checkReachOnly(self, manipState, ~, ~, eyeHomeFlag)
@@ -260,7 +252,7 @@ classdef SingleShapeRingTrial < TrialInterface
                 if ~noReach; conditionFlag = -1; return; end
             
                 distFromTarget = norm(eyeState(1:2) - targetLoc);
-                if distFromTarget <= self.target.Radius * 3
+                if distFromTarget <= self.target.Radius * 2
                     self.elements(self.numTargets + 1).ElementType = 'hide';
                     self.segment = 2;
                 end
@@ -269,6 +261,42 @@ classdef SingleShapeRingTrial < TrialInterface
                 distFromTarget = norm(manipState(end, 1:2) - targetLoc);
                 conditionFlag = distFromTarget <= self.target.Radius;
             end
+        end
+
+        function generateInstructions(self)
+            % Places instruction text in the center of the screen
+
+            self.instructions.ElementType = 'text';
+            self.instructions.Location = [0, 0];
+            self.instructions.Color = [255 255 255];
+            self.instructions.Font = 'Ariel';
+            self.instructions.FontSize = 40;
+            self.instructions.VerticalSpacing = 2;
+            
+            switch self.trialType
+                case 'look'
+                    instructText = ['Shape ring: LOOK-ONLY', newline, ...
+                        'An outer target matching the center target will appear.', newline, ...
+                        'Look for the outer target when you hear the beep.', newline, ...
+                        'Do not reach for the outer target.'];
+                case 'reach'
+                    instructText = ['Shape ring: REACH-ONLY', newline, ...
+                        'An outer target matching the center target will appear.', newline, ...
+                        'Touch the outer target when the center target disappears.', newline, ...
+                        'Do not look for the outer target.'];
+                case 'free'
+                    instructText = ['Shape ring: FREE', newline, ...
+                        'An outer target matching the center target will appear.', newline, ...
+                        'Touch the outer target when the center target disappears.', newline, ...
+                        'You may look for the outer target.'];
+                case 'segmented'
+                    instructText = ['Shape ring: SEGMENTED', newline, ...
+                        'An outer target matching the center target will appear.', newline, ...
+                        'Look for the outer target when you hear the beep.', newline, ...
+                        'When the center target disappears, you may touch the outer target.'];
+            end
+
+            self.instructions.Text = instructText;
         end
     end
 end

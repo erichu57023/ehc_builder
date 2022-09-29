@@ -8,8 +8,10 @@ classdef (Abstract) TrialInterface < handle
 %       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the user is allowed to play during the trial phase
 %       before triggering a timeout.
-%    intro - A struct containing elements to be displayed during the intro phase (information on
-%       targets, instruction text, etc.) of the current round.
+%    instructions - A struct containing elements to be displayed during the instruction phase of the
+%       current trial.
+%    preRound - A struct containing elements to be displayed during the pre-round phase (information 
+%       on targets, instruction text, etc.) of the current round.
 %    elements - A struct containing elements to be displayed during the trial phase of the current
 %       round.
 %    target - A struct containing elements that represent target zones, where a success condition
@@ -18,7 +20,7 @@ classdef (Abstract) TrialInterface < handle
 %       may be met.
 %
 % METHODS:
-%    generate - Runs once per round, and populates the intro, elements, target and failzone
+%    generate - Runs once per round, and populates the pre-round, elements, target and failzone
 %       properties with new values.
 %    check - Runs continuously during the trial phase, and checks whether an input state matches a
 %       pass condition. The output reflects the nature of the pass condition: >0 for success, <0 for
@@ -30,7 +32,8 @@ classdef (Abstract) TrialInterface < handle
         numRounds
         trialType
         timeout
-        intro
+        instructions
+        preRound
         elements
         target
         failzone

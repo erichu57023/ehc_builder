@@ -14,7 +14,7 @@ classdef PolhemusLiberty < ManipulatorInterface
 %    available - Returns true if a new sample is available on the TCP buffer to poll.
 %    poll - Poll and interpret most recent sample, and update an internal FIFO buffer of data for
 %       calibration purposes.
-%    reset - Does nothing.
+%    reset - Flushes the TCP client.
 %    isHome - Checks if the most recent sample is in the home position.
 %    close - Flushes the TCP client.
 
@@ -246,7 +246,8 @@ classdef PolhemusLiberty < ManipulatorInterface
         end
 
         function reset(self)
-            % Does nothing.
+            % Flushes the TCP input buffer to remove built-up samples (in case poll loop is blocked)
+            self.close();
         end
 
         function homeFlag = isHome(self)

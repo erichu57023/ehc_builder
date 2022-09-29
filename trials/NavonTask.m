@@ -4,14 +4,17 @@ classdef NavonTask < TrialInterface
 %
 % PROPERTIES:
 %    numRounds - The number of rounds to generate in this set of trials.
+%    trialType - A specifier indicating how the look and reach portions of the trial should be
+%       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
+%       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the trial should run until a timeout is triggered.
-%    intro - Includes 2 elements: a center target letter and instructions.
+%    instructions - A struct containing elements to be displayed during the instruction phase of the
+%       current trial.
+%    preRound - Includes 2 elements: a center target letter and instructions.
 %    elements - Includes 2 formatted text boxes with Navon elements.
 %    target - Defines the correct Navon element
 %    failzone - Defines elements whose surrounding zones are failure zones.
-%    instructions (Constant) - The text to be displayed in the instruction text box during the intro
-%        phase.
-%
+
 % METHODS:
 %    generate - Populates all element variables with new Navon elements each round.
 %    check - Checks if the input state is within any of the target or failzones.
@@ -20,7 +23,8 @@ classdef NavonTask < TrialInterface
         numRounds
         trialType
         timeout
-        intro
+        instructions
+        preRound
         elements
         target
         failzone
@@ -35,12 +39,6 @@ classdef NavonTask < TrialInterface
         randomizeFlag
         targetDimensions
         localColor; globalColor
-    end
-    properties(Constant)
-%         instructions = ['To begin, hold your cursor on the letter.', newline ...
-%                         '2 letters made up of smaller letters will appear.', newline ...
-%                         'Touch the side with the correct letter (big or small).'];
-        instructions = '';
     end
 
     methods
@@ -76,10 +74,10 @@ classdef NavonTask < TrialInterface
             %       characters have the same width)
             %    targetDimensions - The dimensions of invisible bounding boxes centered at the
             %       center of each text box, which represent target zones for a pass/fail condition.
-            %    localColor - An RGB triplet defining the color of the intro target if the target is
-            %       a local feature
-            %    globalColor - An RGB triplet defining the color of the intro target if the target is
-            %       a global feature
+            %    localColor - An RGB triplet defining the color of the pre-round target if the 
+            %       target is a local feature
+            %    globalColor - An RGB triplet defining the color of the pre-round target if the 
+            %       target is a global feature
 
             self.numRounds = numRounds;
             self.trialType = 'free';
@@ -104,18 +102,16 @@ classdef NavonTask < TrialInterface
             end
             self.letterText = load("navon_letters.mat").letters;
 
-            % Generate a constant intro screen
-            self.intro(1).ElementType = 'text';
-            self.intro(1).Location = [0, 0];
-            self.intro(1).Text = '';
-            self.intro(1).Color = [255 255 255];
-            self.intro(1).Font = self.font;
-            self.intro(1).FontSize = self.fontSize;
-            self.intro(1).VerticalSpacing = 2;
+            % Generate a constant pre-round screen
+            self.preRound.ElementType = 'text';
+            self.preRound.Location = [0, 0];
+            self.preRound.Text = '';
+            self.preRound.Color = [255 255 255];
+            self.preRound.Font = self.font;
+            self.preRound.FontSize = self.fontSize;
+            self.preRound.VerticalSpacing = 2;
 
-            self.intro(2) = self.intro(1);
-            self.intro(2).Text = self.instructions;
-            self.intro(2).Location = [0, 400];
+            self.generateInstructions();
         end
 
         function generate(self)
@@ -175,14 +171,14 @@ classdef NavonTask < TrialInterface
                 end
             end
 
-            % Change center target on intro screen to display the target letter
-            self.intro(1).Text = upper(targetLetter);
+            % Change center target on pre-round screen to display the target letter
+            self.preRound(1).Text = upper(targetLetter);
             
-            % Change intro color based on trial type
+            % Change pre-round color based on trial type
             if trialMode == "local"
-                self.intro(1).Color = self.localColor;
+                self.preRound(1).Color = self.localColor;
             else
-                self.intro(1).Color = self.globalColor;
+                self.preRound(1).Color = self.globalColor;
             end
         end
 
@@ -200,6 +196,36 @@ classdef NavonTask < TrialInterface
             lim = 0.5 * self.targetDimensions;
             targetLoc = self.target.Location;
             conditionFlag = all(xy >= targetLoc - lim) && all(xy <= targetLoc + lim);
+        end
+    end
+
+    methods (Access = private)
+        function generateInstructions(self)
+            % Places instruction text in the center of the screen
+
+            self.instructions.ElementType = 'text';
+            self.instructions.Location = [0, 0];
+            self.instructions.Color = [255 255 255];
+            self.instructions.Font = 'Ariel';
+            self.instructions.FontSize = 40;
+            self.instructions.VerticalSpacing = 2;
+
+            switch self.mode
+                case "local"
+                    instructText = ['Navon task: LOCAL', newline, ...
+                        'Two big letters, each made of smaller letters, will appear.', newline, ...
+                        'Touch the side where the smaller letters match the target letter.'];
+                case "global"
+                    instructText = ['Navon task: GLOBAL', newline, ...
+                        'Two big letters, each made of smaller letters, will appear.', newline, ...
+                        'Touch the side where the big letter matches the target letter.'];
+                case "random"
+                    instructText = ['Navon task: RANDOM', newline, ...
+                        'Two big letters, each made of smaller letters, will appear.', newline, ...
+                        'Touch the side that contains the target letter (may be big or small).'];
+            end
+            
+            self.instructions.Text = instructText;
         end
     end
 end

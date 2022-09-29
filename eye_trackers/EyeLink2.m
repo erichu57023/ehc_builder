@@ -31,7 +31,7 @@ classdef EyeLink2 < EyeTrackerInterface
     methods
         function self = EyeLink2(homeRadius)
             arguments
-                homeRadius {mustBeFloat, mustBeScalarOrEmpty} = 75;
+                homeRadius {mustBeFloat, mustBeScalarOrEmpty} = 50;
             end
             self.homeRadius = homeRadius;
             self.state = [nan, nan, nan, nan, GetSecs];

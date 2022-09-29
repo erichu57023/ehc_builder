@@ -8,7 +8,8 @@ classdef EmptyTrial < TrialInterface
 %       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
 %       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the trial should run until a timeout is triggered
-%    intro - Always empty.
+%    instructions - A struct containing elements to be displayed during the instruction phase.
+%    preRound - Always empty.
 %    elements - Always empty.
 %    target - Always empty.
 %    failzone - Always empty.
@@ -21,7 +22,8 @@ classdef EmptyTrial < TrialInterface
         numRounds
         trialType
         timeout
-        intro
+        instructions
+        preRound
         elements
         target
         failzone
@@ -43,8 +45,9 @@ classdef EmptyTrial < TrialInterface
         
         function generate(self)
             % Populates all element variables with empty structs.
-
-            self.intro = struct([]);
+            
+            self.instructions = struct([]);
+            self.preRound = struct([]);
             self.elements = struct([]);
             self.target = struct([]);
             self.failzone = struct([]);

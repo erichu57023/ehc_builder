@@ -101,15 +101,15 @@ classdef ExperimentManager < handle
             self.data.Manipulators.calibrationFcn = arrayfun(@(obj)obj.calibrationFcn, self.manipulators, 'UniformOutput', false);
             self.data.Manipulators.homePosition = arrayfun(@(obj)obj.homePosition, self.manipulators, 'UniformOutput', false);
             self.data.Manipulators.homeRadius = arrayfun(@(obj)obj.homeRadius, self.manipulators, 'UniformOutput', false);
-
+            
             successFlag = true;
         end
 
         function run(self)
             % Runs each trial in the order they were added, using the following process:
             % 1) Ask the trial to generate a series of on-screen elements, target and fail zones,
-            % and an optional intro screen.
-            % 2) Play the intro screen, which requires the manipulator to be in a defined
+            % and an optional pre-round screen.
+            % 2) Play the pre-round screen, which requires the manipulator to be in a defined
             % position, and drift-correct the eye tracker on that position
             % 3) Play the trial, displaying all elements on screen, collecting eye and manipulator 
             % data each loop, and passing that into the trial object to check for pass/fail
@@ -118,8 +118,26 @@ classdef ExperimentManager < handle
             % in a temporary buffer to be replayed later.
             % 5) Saves data to the output file after completion of each trial
             
+            % Tell the operator that they can perform drift correction/calibration during
+            % pre-round phase.
+            cprintf('RED*','%s: drift correction, %s: calibration, %s: terminate\n', self.driftCorrKey, self.calibrateKey, self.escapeKey);
+
             for ii = 1:length(self.trials)
+                displayInstructions(self.trials{ii});
                 runTrial(self.trials{ii});
+            end
+
+            function displayInstructions(trial)
+                if ~isempty(trial.instructions)
+                    cprintf('BLUE*', 'SPACE to continue\n');
+                    while true
+                        self.display.drawElements(trial.instructions);
+                        self.display.update();
+
+                        [~, ~, keyCode] = KbCheck();
+                        if keyCode(32); break; end
+                    end
+                end
             end
 
             function runTrial(trial)
@@ -140,7 +158,7 @@ classdef ExperimentManager < handle
                     % If all the rounds have been completed and there are some that failed, rerun
                     % those.
                     if (jj > trial.numRounds) && ~isempty(failBuffer)
-                        trial.intro = failBuffer{1}.intro;
+                        trial.preRound = failBuffer{1}.preRound;
                         trial.elements = failBuffer{1}.elements;
                         trial.target = failBuffer{1}.target;
                         trial.failzone = failBuffer{1}.failzone;
@@ -156,13 +174,9 @@ classdef ExperimentManager < handle
                     self.display.emptyScreen();
                     self.display.update();
 
-                    % Tell the operator that they can perform drift correction/calibration during
-                    % intro phase.
-                    cprintf('RED*','%s to run drift correction, %s to run calibration, %s to terminate\n', self.driftCorrKey, self.calibrateKey, self.escapeKey);
-
                     % Provide instructions and perform gaze correction on center target
 %                     self.eyeTracker.driftCorrect() 
-                    playIntroPhase(); 
+                    playPreRoundPhase(); 
 
                     % Reset all non-primary manipulators
                     if self.numManipulators > 1
@@ -179,13 +193,13 @@ classdef ExperimentManager < handle
                 Data = self.data;
                 save(self.filename, 'Data');
 
-                function playIntroPhase()
+                function playPreRoundPhase()
                     % Display trial instructions and perform gaze correction on center target
                     
                     manipCenterXYZ = nan(1,3);
                     eyeCenterXY = nan(1,2);
 
-                    if ~isempty(trial.intro)                        
+                    if ~isempty(trial.preRound)                        
                         % Require the primary manipulator to be on the center target for 1-3 
                         % seconds, randomized to avoid prediction of stimulus onset
                         startTime = GetSecs;
@@ -209,7 +223,7 @@ classdef ExperimentManager < handle
     
                             % Prime the target in the screen center
                             if self.display.asyncReady() > 0
-                                self.display.drawElements(trial.intro);
+                                self.display.drawElements(trial.preRound);
                                 self.display.drawDotsFastAt([manipCenterXYZ(1:2); eyeCenterXY], [10, 10], [255, 0, 0; 0, 0, 255]);
                                 self.display.updateAsync();
                             end
@@ -238,6 +252,10 @@ classdef ExperimentManager < handle
                                 error('ExperimentManager:manualTermination', '%s detected, only the last completed trial will be saved', self.escapeKey);
                             end
 
+                            % Reset all manipulators
+                            self.manipulators.resetAll();
+
+                            % Reset timer and restart loop
                             startTime = GetSecs;
                             self.display.update();
                         end
@@ -317,7 +335,7 @@ classdef ExperimentManager < handle
 
                     % Save original trial information to the failbuffer if the trial didn't succeed
                     if outcome ~= 1
-                        failedTrial.intro = trial.intro;
+                        failedTrial.preRound = trial.preRound;
                         failedTrial.elements = self.data.TrialData(ii).Elements{jj, 1};
                         failedTrial.target = self.data.TrialData(ii).Targets{jj, 1};
                         failedTrial.failzone = self.data.TrialData(ii).Failzones{jj, 1};

@@ -50,10 +50,10 @@ All trial classes must inherit from and implement the provided `TrialInterface`;
 * `framepoly`: a set of vertices used to draw the outline of a polygon with the `Screen('FramePoly')` or `Screen('FrameOval')` functions.
 
 Flexibility in trial paradigms can be coded into each trial, by writing custom `check()` subfunctions. For example, the `SingleShapeRingTrial` currently has 4 supported paradigms:
-1. *Look-only*: the eye tracker is used to hit targets, and moving the manipulator too far out of home position results in a failure. A visual cue (disappearance of the center target) signals that the player may begin gazing.
-2. *Reach-only*: the manipulator is used to hit targets, and gazing too far away from the screen center results in a failure. An auditory cue signals that the player may begin reaching.
+1. *Look-only*: the eye tracker is used to hit targets, and moving the manipulator too far out of home position results in a failure. A auditory cue signals that the player may begin gazing.
+2. *Reach-only*: the manipulator is used to hit targets, and gazing too far away from the screen center results in a failure. A visual cue (disappearance of the center target) signals that the player may begin reaching.
 3. *Free*: the manipulator is used to hit targets, and gaze can travel anywhere without restriction. Both cues are presented simultaneously at the start of each trial.
-4. *Segmented*: split into two segments, consisting of a look-only segment (visual cue) followed by a free reach (audio cue).
+4. *Segmented*: split into two segments, consisting of a look-only segment (auditory cue) followed by a free reach (visual cue).
 
 ## Adding eye trackers
 
@@ -128,4 +128,4 @@ When starting an experiment, the user will be queried for their initials; this w
 * Add a way to force calibration functions to run each time even if calibration files are present, to avoid having to delete them each time.
 * Allow multiple eye trackers to be specified.
 ---
-Last updated: September 19, 2022 by Eric Hu
+Last updated: September 26, 2022 by Eric Hu

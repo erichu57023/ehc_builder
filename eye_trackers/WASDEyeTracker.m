@@ -36,7 +36,7 @@ classdef WASDEyeTracker < EyeTrackerInterface
     methods
         function self = WASDEyeTracker(homeRadius)
             arguments
-                homeRadius {mustBeFloat, mustBeScalarOrEmpty} = 75;
+                homeRadius {mustBeFloat, mustBeScalarOrEmpty} = 50;
             end
             self.homeRadius = homeRadius;
         end
