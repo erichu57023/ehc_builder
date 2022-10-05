@@ -4,9 +4,6 @@ classdef EmptyTrial < TrialInterface
 %
 % PROPERTIES:
 %    numRounds - The number of rounds to generate in this set of trials.
-%    trialType - A specifier indicating how the look and reach portions of the trial should be
-%       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
-%       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the trial should run until a timeout is triggered
 %    instructions - A struct containing elements to be displayed during the instruction phase.
 %    preRound - Always empty.
@@ -20,7 +17,6 @@ classdef EmptyTrial < TrialInterface
 
     properties
         numRounds
-        trialType
         timeout
         instructions
         preRound
@@ -32,15 +28,14 @@ classdef EmptyTrial < TrialInterface
     methods
         function self = EmptyTrial(timeout)
             arguments
-                timeout (1,1) {mustBeNonnegative}
+                timeout (1,1) {mustBeNonnegative} = 60;
             end
             % Constructs an EmptyTrial instance.
             % INPUTS:
-            %    timeout - The number of seconds to play before timeout
+            %    timeout (optional) - The number of seconds to play before timeout
 
             self.numRounds = 1;
             self.timeout = timeout;
-            self.trialType = 'free';
         end
         
         function generate(self)
@@ -48,15 +43,25 @@ classdef EmptyTrial < TrialInterface
             
             self.instructions = struct([]);
             self.preRound = struct([]);
-            self.elements = struct([]);
+
+            self.elements.ElementType = 'text';
+            self.elements.Location = [0, 0];
+            self.elements.Color = [255 255 255];
+            self.elements.Font = 'Ariel';
+            self.elements.FontSize = 40;
+            self.elements.VerticalSpacing = 2;
+            self.elements.Text = ['Empty trial', newline, ...
+                'Press SPACE to end'];
+
             self.target = struct([]);
             self.failzone = struct([]);
         end
 
-        function conditionFlag = check(self, ~, ~, ~, ~)
+        function conditionFlag = check(~, ~)
             % Returns true if any key is pressed.
             
-            conditionFlag = KbCheck; % Keyboard press
+            [~, ~, keyCode] = KbCheck;
+            conditionFlag = keyCode(32); % spacebar press
         end
     end
 end

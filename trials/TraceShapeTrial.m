@@ -3,9 +3,6 @@ classdef TraceShapeTrial < TrialInterface
 
 % PROPERTIES:
 %    numRounds - The number of rounds to generate in this set of trials.
-%    trialType - A specifier indicating how the look and reach portions of the trial should be
-%       handled. Supported values are 'look' for look-only, 'reach' for reach-only, 'segmented' to
-%       separate look and reach stages, or 'free' (by default).
 %    timeout - The duration in seconds that the trial should run until a timeout is triggered.
 %    instructions - A struct containing elements to be displayed during the instruction phase of the
 %       current trial.
@@ -24,7 +21,6 @@ classdef TraceShapeTrial < TrialInterface
 
     properties
         numRounds
-        trialType
         timeout
         instructions
         preRound
@@ -63,7 +59,7 @@ classdef TraceShapeTrial < TrialInterface
 
             self.numRounds = numRounds;
             self.timeout = timeout;
-            self.trialType = 'free';
+%             self.trialType = 'free';
             self.shapeType = shapeType;
             self.shapeRadius = shapeRadius;
             self.thresholdRadius = shapeRadius / 4;
@@ -102,18 +98,16 @@ classdef TraceShapeTrial < TrialInterface
             end
         end
 
-        function conditionFlag = check(self, manipState, ~, ~, ~)
+        function conditionFlag = check(self, state)
             % Generates a conditionFlag based on input state.
             % INPUTS:
-            %    manipState - A matrix whose first three columns are XYZ data, with XY in screen 
-            %       coordinates. Each row corresponds to a unique manipulator.
-            %    eyeState - A vector whose first twp columns are XY data, with XY in screen 
-            %       coordinates.
+            %    state - A struct that contains information about current eye and manipulator
+            %       states. (Fields: manipXY, manipExtra, eyeXY, manipHomeFlag, eyeHomeFlag).
             % OUTPUTS:
             %    conditionFlag - 1 if success (state within target position), 0 if timeout.
             
             % Measure input angle
-            x = manipState(1, 1); y = manipState(1, 2);
+            x = state.manipXY(1, 1); y = state.manipXY(1, 2);
             theta = atan2d(y, x);
             conditionFlag = 0;
 

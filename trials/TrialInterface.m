@@ -1,4 +1,4 @@
-classdef (Abstract) TrialInterface < handle
+classdef TrialInterface < handle
 % TRIALINTERFACE Abstract implementation of a trial manager. All trials must inherit this class.
 %
 % PROPERTIES:
@@ -25,12 +25,18 @@ classdef (Abstract) TrialInterface < handle
 %    check - Runs continuously during the trial phase, and checks whether an input state matches a
 %       pass condition. The output reflects the nature of the pass condition: >0 for success, <0 for
 %       failure, and 0 for timeout.
+%    importPracticeData - Runs once per trial, and may be overridden by trials which need external
+%       data to operate (such as trials that set target sizes based on accuracy during practice
+%       trials, etc.)
 %
 % See also: EYETRACKERINTERFACE, MANIPULATORINTERFACE, DISPLAYMANAGER
+    
+    properties (Access = private)
+        trialType = 'free'; 
+    end
 
     properties (Abstract)
         numRounds
-        trialType
         timeout
         instructions
         preRound
@@ -42,5 +48,9 @@ classdef (Abstract) TrialInterface < handle
     methods (Abstract)
         generate
         check
+    end
+
+    methods (Static)
+        function outcome = evaluatePractice(~, ~); outcome = []; end
     end
 end

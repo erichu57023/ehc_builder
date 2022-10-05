@@ -7,58 +7,70 @@ sca;
 close all;
 clear;
 
-% Query user for name to generate a filepath for saved data
+%% Query user for name to generate a filepath for saved data
 filepath = GenerateFilePath();
 
 
-% Psychtoolbox settings
+%% Psychtoolbox settings
 PsychDefaultSetup(2);
-
 
 % Assign a display screen (zero-indexed)
 screenID = max(Screen('Screens'));
-
-
-% Define an eye tracker (see eye_trackers folder)
-eyeTrackerHomeRadius = 50; % Home radius in pixels
-% eyeTracker = NoEyeTracker();
-% eyeTracker = WASDEyeTracker(eyeTrackerHomeRadius);
-eyeTracker = EyeLink2(eyeTrackerHomeRadius);
-    
-
-% Define one or more manipulators (see manipulators folder)
-% manipulator = TouchScreenMouseCursor();
-% manipulator = PolhemusLiberty();
- manipulator = [PolhemusLiberty(), TouchScreenMouseCursor()];
-
 
 % Assign a background color as an 8-bit RGB value (0 to 255)
 background8BitRGB = [0, 0, 0];
 
 
-% Initialize the experiment
+%% Define an eye tracker (see eye_trackers folder)
+eyeHomeRadius = 50; % Home radius in pixels
+% eyeTracker = NoEyeTracker();
+eyeTracker = WASDEyeTracker(eyeHomeRadius);
+% eyeTracker = EyeLink2(eyeHomeRadius);
+    
+
+%% Define one or more manipulators (see manipulators folder)
+manipHomeRadiusPixels = 50; % Home radius (in pixels) for on-screen home positions.
+manipHomeRadiusMills = 15; % Home radius (in mm) for 3D coordinate home positions.
+forcePLCalibration = true; % Forces PolhemusLiberty to call calibration even if liberty_calibration.mat is present
+
+manipulator = TouchScreenMouseCursor(manipHomeRadiusPixels);
+% manipulator = PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeRadiusMills);
+% manipulator = [PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeRadiusMills), ...
+%                TouchScreenMouseCursor(manipHomeRadiusPixels)];
+
+
+%% Initialize the experiment
 manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, background8BitRGB);
 
 
+%% Define trial parameters
+timeout = 5;
+stimulusSize = 25;
+eyeTargetSize = stimulusSize * 1.5;
+reachTargetSize = []; % If empty, will use data from practice trial
+clickToPass = isa(manipulator(end), 'TouchScreenMouseCursor'); % Denotes whether a click is required to pass the trial
+
+% Add a target practice trial (only one of each class is allowed)
+numPracticeRounds = 5;
+targetAccuracy = 0.7;
+manager.addPractice(SingleShapeRingTrial(numPracticeRounds, 'free', 5, 1, clickToPass, stimulusSize, eyeTargetSize, stimulusSize), targetAccuracy);
+
 % Add a set of trials (see trials folder)
 % manager.addTrial(EmptyTrial(60));
-manager.addTrial(SingleShapeRingTrial(5, 'look', 5, 1, 25));
-manager.addTrial(SingleShapeRingTrial(5, 'reach', 5, 1, 25));
-manager.addTrial(SingleShapeRingTrial(5, 'free', 5, 1, 25));
-manager.addTrial(SingleShapeRingTrial(5, 'segmented', 5, 1, 25));
-
-% manager.addTrial(SingleShapeRingTrial(3, 'free', 5, 2, 25, 90));
-% manager.addTrial(SingleShapeRingTrial(3, 'free', 5, 4, 25));
-% manager.addTrial(SingleShapeRingTrial(3, 'free', 5, 8, 25));
-
+manager.addTrial(SingleShapeRingTrial(5, 'look', timeout, 1, clickToPass, stimulusSize, eyeTargetSize, reachTargetSize));
+manager.addTrial(SingleShapeRingTrial(5, 'reach', timeout, 1, clickToPass, stimulusSize, eyeTargetSize, reachTargetSize));
+manager.addTrial(SingleShapeRingTrial(5, 'free', timeout, 1, clickToPass, stimulusSize, eyeTargetSize, reachTargetSize));
+manager.addTrial(SingleShapeRingTrial(5, 'segmented', timeout, 1, clickToPass, stimulusSize, eyeTargetSize, reachTargetSize));
+% manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 2, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize, 90));
+% manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 4, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize));
+% manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 8, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize));
 % manager.addTrial(NavonTask(3, 5, "random"))
 % manager.addTrial(NavonTask(3, 5, "local"))
 % manager.addTrial(NavonTask(3, 5, "global"))
+% manager.addTrial(TraceShapeTrial(1, 15, 'Random', 200))
 
-% manager.addTrial(TraceShapeTrial(3, 15, 'Random', 200))
 
-
-% Run the experiment 
+%% Run the experiment 
 try
     if manager.calibrate()
         manager.run();
@@ -70,5 +82,5 @@ catch exception
     rethrow(exception)
 end
 
-% Display output data
+%% Display output data
 outputData = manager.data;

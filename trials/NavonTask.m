@@ -182,17 +182,15 @@ classdef NavonTask < TrialInterface
             end
         end
 
-        function conditionFlag = check(self, manipState, ~, ~, ~)
+        function conditionFlag = check(self, state)
             % Generates a conditionFlag based on input state.
             % INPUTS:
-            %    manipState - A vector whose first three columns are XYZ data, with XY in screen 
-            %       coordinates. Each row corresponds to a unique manipulator.
-            %    eyeState - A vector whose first twp columns are XY data, with XY in screen 
-            %       coordinates.
+            %    state - A struct that contains information about current eye and manipulator
+            %       states. (Fields: manipXY, manipExtra, eyeXY, manipHomeFlag, eyeHomeFlag).
             % OUTPUTS:
             %    conditionFlag - 1 if success (state within target position), 0 if timeout.
             
-            xy = manipState(1, 1:2);
+            xy = state.manipXY(1, :);
             lim = 0.5 * self.targetDimensions;
             targetLoc = self.target.Location;
             conditionFlag = all(xy >= targetLoc - lim) && all(xy <= targetLoc + lim);

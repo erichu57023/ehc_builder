@@ -27,6 +27,7 @@ classdef PolhemusLiberty < ManipulatorInterface
         display
         ipAddress
         tcpPort
+        forceCalibration
         calibrationScale
         client
         tableLevel
@@ -34,10 +35,11 @@ classdef PolhemusLiberty < ManipulatorInterface
     end
 
     methods
-        function self = PolhemusLiberty(ipAddress, tcpPort, homeRadius, bufferSize, calibrationScale)
+        function self = PolhemusLiberty(ipAddress, tcpPort, forceCalibration, homeRadius, bufferSize, calibrationScale)
             arguments
                 ipAddress {mustBeTextScalar} = 'localhost';
                 tcpPort (1,1) {mustBeInteger, mustBeNonnegative} = 7234;
+                forceCalibration (1,1) {mustBeNumericOrLogical} = false;
                 homeRadius {mustBeFloat, mustBeScalarOrEmpty} = 15;
                 bufferSize (1,1) {mustBeInteger, mustBePositive} = 500;
                 calibrationScale (1,1) {mustBeFloat} = 0.5
@@ -46,6 +48,9 @@ classdef PolhemusLiberty < ManipulatorInterface
             % INPUTS:
             %    ipAddress - The IP address of the TCP server.
             %    tcpPort - The input port of the TCP server.
+            %    forceCalibration - If true, forces calibration even if liberty_calibration.mat is
+            %       present.
+            %    homeRadius - The radius of the home position used to start trials, in mm
             %    bufferSize - The size of a ring buffer used to store sample data for calibration.
             %    calibrationScale - A 0-1 float representing the position of each calibration point
             %       along the line from the center to the edge of the screen.
@@ -54,6 +59,7 @@ classdef PolhemusLiberty < ManipulatorInterface
             self.tcpPort = tcpPort;
             self.homeRadius = homeRadius;
             self.ringSize = bufferSize;
+            self.forceCalibration = forceCalibration;
             self.calibrationScale = calibrationScale;
             self.client = [];
 
@@ -89,7 +95,7 @@ classdef PolhemusLiberty < ManipulatorInterface
             %    successFlag - Returns true if nothing went wrong.
 
             % Skip calibration if an existing calibration file is found
-            if isfile('liberty_calibration.mat')
+            if ~self.forceCalibration && isfile('liberty_calibration.mat')
                 cprintf('text', 'Detected previous Liberty calibration, loading...\n')
                 load('liberty_calibration.mat', 'Date', 'CalibrationFunction', 'HomePosition');
                 

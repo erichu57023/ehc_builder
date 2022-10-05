@@ -45,12 +45,12 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             disp('TouchScreenMouseCursor: established')
         end
 
-        function successFlag = calibrate(self)
+        function successFlag = calibrate(~)
             disp('TouchScreenMouseCursor: calibrated')
             successFlag = true;
         end
 
-        function availFlag = available(self)
+        function availFlag = available(~)
             availFlag = true;
         end
 

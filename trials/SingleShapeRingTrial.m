@@ -20,6 +20,8 @@ classdef SingleShapeRingTrial < TrialInterface
 % METHODS:
 %    generate - Populates all element variables with new shapes and locations each round.
 %    check - Checks if the input state is within any of the target or failzones.
+%    evaluatePractice - Imports data from prior practice sessions to dynamically set a reach target
+%        radius.
 
     properties
         numRounds
@@ -33,27 +35,30 @@ classdef SingleShapeRingTrial < TrialInterface
     end
     properties (Access = private)
         numTargets
+        clickToPass
         targetRadius
+        eyePassRadius; manipPassRadius;
         distFromCenter
         axis
-        checkFcn; segment; preCheck;
+        checkFcn; segmentFlag; preCheck;
     end
-    properties(Constant)
+    properties (Constant)
         allowedShapes = {'Circle', 'Triangle', 'Square', 'Cross'};
         startLookBeep = @(~) Beeper(400, 0.7, 0.1);
-        successBeep = @(~) Beeper(1000, 0.7, 0.1);
-        failBeep = @(~) Beeper(200, 0.7, 0.1)
     end
 
     methods
-        function self = SingleShapeRingTrial(numRounds, trialType, timeout, numTargets, targetRadius, axis, distFromCenter)
+        function self = SingleShapeRingTrial(numRounds, trialType, timeout, numTargets, clickToPass, targetRadius, eyePassRadius, manipPassRadius, axis, distFromCenter)
             arguments
                 numRounds (1,1) {mustBeInteger, mustBePositive};
                 trialType {mustBeMember(trialType, {'look', 'reach', 'free', 'segmented'})}
                 timeout (1,1) {mustBeNonnegative};
                 numTargets (1,1) {mustBeInteger, mustBePositive};
-                targetRadius (1,1) {mustBeInteger, mustBePositive} = 25
-                axis (1,1) {mustBeInteger, mustBeNonnegative} = 0
+                clickToPass (1,1) {mustBeNumericOrLogical} = true;
+                targetRadius (1,1) {mustBeInteger, mustBePositive} = 25;
+                eyePassRadius (1,1) {mustBeScalarOrEmpty} = 25;
+                manipPassRadius {mustBeScalarOrEmpty} = [];
+                axis (1,1) {mustBeInteger, mustBeNonnegative} = 0;
                 distFromCenter (1,1) {mustBeInteger, mustBeGreaterThan(distFromCenter, targetRadius)} = 200
             end
             % Constructs a SingleShapeRingTrial instance.
@@ -65,8 +70,13 @@ classdef SingleShapeRingTrial < TrialInterface
             %    timeout - The duration in seconds that the trial should run until a timeout is 
             %       triggered.
             %    numTargets - The number of shapes to display each round.
+            %    clickToPass - Set to true if a click/touch is required to pass trials
             %    targetRadius - The radius of each shape to be displayed, represented as the radius 
             %       of a circle with the same area.
+            %    eyePassRadius - The radius around each target for which a gaze is successful
+            %    manipPassRadius - The radius around each target for which a reach is successful. If
+            %       left empty, this must be set by another function before calling generate(). This
+            %       can be done using 
             %    axis - The angular skew in degrees by which the ring should be offset. Can be used 
             %       to make trials horizontally symmetric, for example.
             %    distFromCenter - The distance in pixels from the center of each shape to the center
@@ -84,20 +94,36 @@ classdef SingleShapeRingTrial < TrialInterface
                 case 'free'
                     self.checkFcn = @self.checkFree;
                 case 'segmented'
-                    self.segment = 1;
+                    self.segmentFlag = false;
                     self.checkFcn = @self.checkSegmented;
             end
 
             self.numTargets = numTargets;
+            self.clickToPass = logical(clickToPass);
             self.targetRadius = targetRadius;
+            self.eyePassRadius = eyePassRadius;
+            self.manipPassRadius = manipPassRadius;
             self.distFromCenter = distFromCenter;
             self.axis = axis;
             self.generateInstructions();
+            self.practiceOutcome([]);
         end
         
         function generate(self)
             % Generates a new trial, by producing a list of all visual elements and their locations 
             % (relative to the center of screen), and populating the element variables.
+
+            % Checks if a reach target threshold was explicitly set, and if not, whether a practice
+            % round was played.
+            if isempty(self.manipPassRadius)
+                if isempty(self.practiceOutcome)
+                    error('SingleShapeRingTrial:invalidProperty', 'manipPassRadius is empty and was not set by a practice round.');
+                end
+
+                % Set reach target threshold to max of visual stimuli radius and corrected practice
+                % radius.
+                self.manipPassRadius = max(self.targetRadius, self.practiceOutcome);
+            end
 
             if self.numTargets == 1
                 % If only 1 target, randomize axis in 45 degree increments
@@ -119,7 +145,7 @@ classdef SingleShapeRingTrial < TrialInterface
                 targetShapeIdx = validShapeIdxs(randi(totalNumShapes));
                 nonTargetShapes = validShapeIdxs(validShapeIdxs ~= targetShapeIdx);
     
-                % Ensure non-target shapes are represented at least twice by even distribution
+                % Ensure non-target shapes are represented at least twice  by even distribution
                 % (only the target can be displayed singly)
                 shapeIdxList = repmat(nonTargetShapes, 1, 1 + self.numTargets);
                 shapeIdxList = shapeIdxList(1 : self.numTargets-1); 
@@ -159,19 +185,15 @@ classdef SingleShapeRingTrial < TrialInterface
             self.preRound.Location = [0, 0];
 
             % Reset the segment stage for segmented mode.
-            self.segment = 1;
+            self.segmentFlag = false;
             self.preCheck = 0;
         end
 
-        function conditionFlag = check(self, manipState, eyeState, manipHomeFlags, eyeHomeFlag)
+        function conditionFlag = check(self, state)
             % Generates a conditionFlag based on input state. 
             % INPUTS:
-            %    manipState - A vector whose first three columns are XYZ data, with XY in screen 
-            %       coordinates. Each row corresponds to a unique manipulator.
-            %    eyeState - A vector whose first two columns are XY data, with XY in screen 
-            %       coordinates.
-            %    manipHomeFlags - A boolean that indicates if manipulators are in home positions.
-            %    eyeHomeFlag - A boolean that indicates if eye tracker is in home position.
+            %    state - A struct that contains information about current eye and manipulator
+            %       states. (Fields: manipXY, manipExtra, eyeXY, manipHomeFlag, eyeHomeFlag).
             %
             % OUTPUTS:
             %    conditionFlag - 1 if success (state within target position), 0 if timeout.
@@ -194,72 +216,118 @@ classdef SingleShapeRingTrial < TrialInterface
             end
 
             % This runs every time.
-            if any(isnan(manipState), 'all') || any(isnan(eyeState), 'all'); conditionFlag = 0; return; end
-
-            % Only check the end-trial manipulator (the last one in the list)
-            conditionFlag = self.checkFcn(manipState, eyeState, manipHomeFlags, eyeHomeFlag);
-            if conditionFlag == 1
-                self.successBeep();
-            elseif conditionFlag == -1
-                self.failBeep();
+            if any(isnan([state.manipXY(:); state.manipExtra(:); state.eyeXY(:)]))
+                conditionFlag = 0;
+                return; 
             end
+            conditionFlag = self.checkFcn(state);
+        end
+    end
+
+    methods (Static)
+        function outcome = evaluatePractice(practiceData)
+            % Calculates a manipulator target threshold radius based on target accuracy provided in
+            % practiceData.
+            % INPUTS:
+            %    practiceData - A struct that contains data from practice trials.
+
+            % Import data
+            hitsMissesIdx = find(practiceData.Outcomes ~= 0);
+            numValidRounds = length(hitsMissesIdx);
+            manipXY = nan(numValidRounds, 2);
+            targetXY = nan(numValidRounds, 2);
+            calFunc = practiceData.Manipulators.calibrationFcn{end};
+            for ii = 1 : numValidRounds
+                manipCalData = calFunc(practiceData.ManipulatorData{hitsMissesIdx(ii)}(end, :));
+                manipXY(ii, :) = manipCalData(1:2);
+                targetXY(ii, :) = practiceData.Targets{hitsMissesIdx(ii)}.Location;
+            end
+
+            % Calculate error SD
+            targetErrors = vecnorm(manipXY - targetXY, 2, 2);
+            targetErrorSD = sqrt(sum(targetErrors .^ 2) / (numValidRounds - 1));
+
+            % Calculate target threshold for probability
+            outcome = norminv(0.5 + practiceData.TargetAccuracy/2, 0, targetErrorSD);
+            cprintf('Text', ['SingleShapeRingTrial: the calculated threshold radius is %.2f\n' ...
+                '\tAll SingleShapeRingTrials will use this value if a threshold radius is not provided.\n' ...
+                '\tIf this value is smaller than the stimulus radius, that value will be used instead.\n'], outcome);
+            SingleShapeRingTrial.practiceOutcome(outcome);
+        end
+    end
+
+    methods (Static, Access = private)
+        function out = practiceOutcome(data)
+            persistent pOutcome;
+            if nargin
+                pOutcome = data;
+            end
+            out = pOutcome;
         end
     end
 
     methods (Access = private)
         % self.check() split into different check functions for each trial type for runtime efficiency.
 
-        function conditionFlag = checkLookOnly(self, ~, eyeState, manipHomeFlags, ~)
+        function conditionFlag = checkLookOnly(self, state)
             % Checks if the look is on-target, and fails if the manipulator leaves the center 
             % target.
-            targetLoc = self.target.Location;
             
-            noReach = manipHomeFlags(1);
+            % Fail if primary manipulator is outside home position
+            noReach = state.manipHomeFlag(1);
             if ~noReach; conditionFlag = -1; return; end
             
-            distFromTarget = norm(eyeState(1:2) - targetLoc);
-            conditionFlag = distFromTarget <= self.target.Radius * 2;
+            distFromTarget = norm(state.eyeXY - self.target.Location);
+            conditionFlag = distFromTarget <= self.eyePassRadius;
         end
 
-        function conditionFlag = checkReachOnly(self, manipState, ~, ~, eyeHomeFlag)
+        function conditionFlag = checkReachOnly(self, state)
             % Checks if the reach is on-target, and fails if the eye position leaves the center 
             % target.
-            targetLoc = self.target.Location;
-            
-            noLook = eyeHomeFlag;
+
+            % Fail if eye is outside home position
+            noLook = state.eyeHomeFlag;
             if ~noLook; conditionFlag = -1; return; end
-            
-            distFromTarget = norm(manipState(end, 1:2) - targetLoc);
-            conditionFlag = distFromTarget <= self.target.Radius;
+
+            % Return if clickToPass and no click detected
+            if (self.clickToPass && ~state.manipExtra(end)); conditionFlag = 0; return; end 
+
+            distFromTarget = norm(state.manipXY(end, :) - self.target.Location);
+            conditionFlag = (distFromTarget <= self.manipPassRadius);
+
+            % Fail if clickToPass and click missed
+            if (self.clickToPass && ~conditionFlag); conditionFlag = -1; return; end
         end
 
-        function conditionFlag = checkFree(self, manipState, ~, ~, ~)
-            % Checks if the reach is on-target, with no fail condition.
-            targetLoc = self.target.Location;
-            distFromTarget = norm(manipState(end, 1:2) - targetLoc);
-            conditionFlag = distFromTarget <= self.target.Radius;
+        function conditionFlag = checkFree(self, state)
+            % Checks if the reach is on-target, with no condition on eye position.
+
+            % Return if clickToPass and no click detected
+            if (self.clickToPass && ~state.manipExtra(end)); conditionFlag = 0; return; end 
+
+            distFromTarget = norm(state.manipXY(end, :) - self.target.Location);
+            conditionFlag = (distFromTarget <= self.manipPassRadius);
+
+            % Fail if clickToPass and click missed
+            if (self.clickToPass && ~conditionFlag); conditionFlag = -1; return; end
         end
 
-        function conditionFlag = checkSegmented(self, manipState, eyeState, manipHomeFlags, ~)
+        function conditionFlag = checkSegmented(self, state)
             % First checks if look is on-target, and then begins a reach check.
-            targetLoc = self.target.Location;
 
-            if (self.segment == 1)
+            if ~self.segmentFlag
                 % Start with a look-only segment.
                 conditionFlag = 0;
+                lookComplete = self.checkLookOnly(state);
+                if lookComplete == -1; conditionFlag = -1; return; end
                 
-                noReach = manipHomeFlags(1);
-                if ~noReach; conditionFlag = -1; return; end
-            
-                distFromTarget = norm(eyeState(1:2) - targetLoc);
-                if distFromTarget <= self.target.Radius * 2
+                if lookComplete
                     self.elements(self.numTargets + 1).ElementType = 'hide';
-                    self.segment = 2;
+                    self.segmentFlag = true;
                 end
-            elseif (self.segment == 2)
-                % End with a free-reach segment.
-                distFromTarget = norm(manipState(end, 1:2) - targetLoc);
-                conditionFlag = distFromTarget <= self.target.Radius;
+            else
+                % End with a free segment.
+                conditionFlag = self.checkFree(state);
             end
         end
 

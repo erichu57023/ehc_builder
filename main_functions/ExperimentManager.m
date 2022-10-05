@@ -22,13 +22,19 @@ classdef ExperimentManager < handle
         eyeTracker
         manipulators; numManipulators
         filename
+        practiceTrials; practiceClasses;
         trials
+        state
     end
     properties (Constant, Access = private)
         driftCorrKey = 'M';
         calibrateKey = 'N';
         escapeKey = 'Escape';
         activeKeys = arrayfun(@KbName, {ExperimentManager.driftCorrKey, ExperimentManager.calibrateKey, ExperimentManager.escapeKey});
+        feedbackColors = [255, 102, 102; 102, 255, 102]; % [failColor; successColor]
+        feedbackDuration = 0.5; % Duration of visual feedback for target outcome in secs
+        successBeep = @(~) Beeper(1000, 0.7, 0.1);
+        failBeep = @(~) Beeper(200, 0.7, 0.1)
     end
 
     methods
@@ -54,10 +60,32 @@ classdef ExperimentManager < handle
             self.numManipulators = length(manipulatorList);
             self.filename = filename;
             self.trials = {};
+            self.practiceTrials = {};
+            self.practiceClasses = {};
             
             self.data.EyeTracker.Class = class(self.eyeTracker);
             self.data.Manipulators.Class = arrayfun(@(obj)class(obj), self.manipulators, 'UniformOutput', false);
             self.data.NumTrials = 0;
+        end
+
+        function addPractice(self, trial, targetAccuracy)
+            arguments
+                self
+                trial (1,1) {mustBeA(trial, 'TrialInterface')}
+                targetAccuracy {mustBeScalarOrEmpty, mustBeNonnegative} = [];
+            end
+            % Adds a trial to the end of the practice queue, along with its requested accuracy
+            % INPUTS:
+            %    trial - An instance of TrialInterface
+            %    targetAccuracy - A value from 0 to 1 that denotes the desired accuracy of this
+            %       trial type. This will be used to automatically adjust trial parameters using
+            %       data saved in the practiceData struct.
+
+            if ismember(class(trial), self.practiceClasses)
+                error('ExperimentManager:trialInvalid', 'Only one practice trial of any particular class is allowed')
+            end
+            self.practiceTrials{end + 1} = {trial, targetAccuracy};
+            self.practiceClasses{end + 1} = class(trial);
         end
 
         function addTrial(self, trial)
@@ -69,7 +97,7 @@ classdef ExperimentManager < handle
             % INPUTS:
             %    trial - An instance of TrialInterface
 
-            self.trials{size(self.trials,2) + 1} = trial;
+            self.trials{end + 1} = trial;
             self.data.NumTrials = self.data.NumTrials + 1;
         end
 
@@ -106,7 +134,8 @@ classdef ExperimentManager < handle
         end
 
         function run(self)
-            % Runs each trial in the order they were added, using the following process:
+            % Runs each practice and actual trial in the order they were added, using the following 
+            % process:
             % 1) Ask the trial to generate a series of on-screen elements, target and fail zones,
             % and an optional pre-round screen.
             % 2) Play the pre-round screen, which requires the manipulator to be in a defined
@@ -115,16 +144,40 @@ classdef ExperimentManager < handle
             % data each loop, and passing that into the trial object to check for pass/fail
             % conditions
             % 4) For all rounds in the trial that do not pass with success (outcome ~= 1), save them
-            % in a temporary buffer to be replayed later.
+            % in a temporary buffer to be replayed later. (actual trial only)
             % 5) Saves data to the output file after completion of each trial
             
             % Tell the operator that they can perform drift correction/calibration during
             % pre-round phase.
             cprintf('RED*','%s: drift correction, %s: calibration, %s: terminate\n', self.driftCorrKey, self.calibrateKey, self.escapeKey);
 
+            % Run each practice trial
+            practiceData = struct();
+            practiceData.EyeTracker = self.data.EyeTracker;
+            practiceData.Manipulators = self.data.Manipulators;
+            for ii = 1:length(self.practiceTrials)
+                trial = self.practiceTrials{ii}{1};
+                practiceData(ii).TargetAccuracy = self.practiceTrials{ii}{2};
+                trial.instructions.Text = ['PRACTICE::: ', trial.instructions.Text];
+                displayInstructions(trial)
+                runTrial(trial, true);
+
+                % Ask the trial class to evaluate the outcome
+                practiceOutcome = trial.evaluatePractice(practiceData(ii));
+                self.data.PracticeData(ii).Class = class(trial);
+                self.data.PracticeData(ii).TargetAccuracy = practiceData(ii).TargetAccuracy;
+                self.data.PracticeData(ii).Outcome = practiceOutcome;
+            end
+            
+            % Save practice data to output file
+            Data = self.data;
+            save(self.filename, 'Data');
+
+            % Run each actual trial
             for ii = 1:length(self.trials)
-                displayInstructions(self.trials{ii});
-                runTrial(self.trials{ii});
+                trial = self.trials{ii};
+                displayInstructions(trial);
+                runTrial(trial, false);
             end
 
             function displayInstructions(trial)
@@ -135,19 +188,32 @@ classdef ExperimentManager < handle
                         self.display.update();
 
                         [~, ~, keyCode] = KbCheck();
-                        if keyCode(32); break; end
+                        if keyCode(32)
+                            break
+                        elseif keyCode(KbName(self.escapeKey))
+                            self.close();
+                            sca;
+                            error('ExperimentManager:manualTermination', '%s detected, only the last completed trial will be saved', self.escapeKey);
+                        end
                     end
                 end
             end
 
-            function runTrial(trial)
+            function runTrial(trial, practiceFlag)
                 % Runs a single trial defined by TrialInterface
 
                 failBuffer = {};
-
-                self.data.TrialData(ii).NumRounds = trial.numRounds;
-                self.data.TrialData(ii).Timeout = trial.timeout;
-                self.data.TrialData(ii).Outcomes = zeros(1, trial.numRounds);
+                
+                if practiceFlag
+                    practiceData(ii).NumRounds = trial.numRounds;
+                    practiceData(ii).Timeout = trial.timeout;
+                    practiceData(ii).Outcomes = zeros(1, trial.numRounds);
+                else
+                    self.data.TrialData(ii).Class = class(trial);
+                    self.data.TrialData(ii).NumRounds = trial.numRounds;
+                    self.data.TrialData(ii).Timeout = trial.timeout;
+                    self.data.TrialData(ii).Outcomes = zeros(1, trial.numRounds);
+                end
 
                 jj = 1;
                 while (jj <= trial.numRounds) || ~isempty(failBuffer)
@@ -165,10 +231,16 @@ classdef ExperimentManager < handle
                         failBuffer(1) = [];
                     end
                     
-                    % Save the trial details to 
-                    self.data.TrialData(ii).Elements{jj, 1} = trial.elements;
-                    self.data.TrialData(ii).Targets{jj, 1} = trial.target;
-                    self.data.TrialData(ii).Failzones{jj, 1} = trial.failzone;
+                    % Save the trial details
+                    if practiceFlag
+                        practiceData(ii).Elements{jj, 1} = trial.elements;
+                        practiceData(ii).Targets{jj, 1} = trial.target;
+                        practiceData(ii).Failzones{jj, 1} = trial.failzone;
+                    else
+                        self.data.TrialData(ii).Elements{jj, 1} = trial.elements;
+                        self.data.TrialData(ii).Targets{jj, 1} = trial.target;
+                        self.data.TrialData(ii).Failzones{jj, 1} = trial.failzone;
+                    end
 
                     % Clear the display
                     self.display.emptyScreen();
@@ -190,8 +262,10 @@ classdef ExperimentManager < handle
                 end
 
                 % Save data for each completed trial during runtime
-                Data = self.data;
-                save(self.filename, 'Data');
+                if ~practiceFlag
+                    Data = self.data;
+                    save(self.filename, 'Data');
+                end
 
                 function playPreRoundPhase()
                     % Display trial instructions and perform gaze correction on center target
@@ -279,8 +353,13 @@ classdef ExperimentManager < handle
                         manipTraces{kk} = nan(trial.timeout * 1000, length(manipRawStates{kk}));
                     end
                     manipTraceIdxs = ones(1, self.numManipulators);
-                    manipCenterXYZs = nan(self.numManipulators, 3);
-                    eyeCenterXY = nan(1, 2);
+                    
+                    self.state.eyeXY = nan(1, 2);
+                    self.state.manipXY = nan(self.numManipulators, 2);
+                    
+                    % Used for extra dimensions, such as Z-coordinate or mouse click.
+                    self.state.manipExtra = ones(self.numManipulators, 1); 
+
                     
                     while (timestamp < trial.timeout)
                         % Poll the eye tracker
@@ -288,9 +367,9 @@ classdef ExperimentManager < handle
                             eyeRawState = self.eyeTracker.poll();
                             eyeTrace(eyeTraceIdx, :) = eyeRawState;
                             eyeTraceIdx = eyeTraceIdx + 1;
-                            eyeCenterXY = self.eyeTracker.calibrationFcn(eyeRawState);
+                            self.state.eyeXY = self.eyeTracker.calibrationFcn(eyeRawState);
                         end
-                        eyeHomeFlag = self.eyeTracker.isHome();
+                        self.state.eyeHomeFlag = self.eyeTracker.isHome();
 
                         % Poll all manipulators
                         for kk = 1 : self.numManipulators
@@ -298,25 +377,29 @@ classdef ExperimentManager < handle
                                 manipRawStates{kk} = self.manipulators(kk).poll();
                                 manipTraces{kk}(manipTraceIdxs(kk), :) = manipRawStates{kk};
                                 manipTraceIdxs(kk) = manipTraceIdxs(kk) + 1;
-                                manipCenterXYZs(kk, :) = self.manipulators(kk).calibrationFcn(manipRawStates{kk});
+                                manipState = self.manipulators(kk).calibrationFcn(manipRawStates{kk});
+                                self.state.manipXY(kk, :) = manipState(1:2);
+                                if length(manipState) == 3
+                                    self.state.manipExtra(kk) = manipState(3);
+                                end
                             end
                         end
-                        manipHomeFlags = self.manipulators.isHomeAll();
+                        self.state.manipHomeFlag = self.manipulators.isHomeAll();
                         
                         % Only start the timeout timer if the player has moved either eye tracker or
                         % manipulator out of the central zone
-                        if (startTime == inf) && ~(self.eyeTracker.isHome() && manipHomeFlags(1))
+                        if (startTime == inf) && ~(self.state.eyeHomeFlag && self.state.manipHomeFlag(1))
                             startTime = GetSecs;
                         end
 
                         % End if a pass/fail condition is met
-                        outcome = trial.check(manipCenterXYZs, eyeCenterXY, manipHomeFlags, eyeHomeFlag);
+                        outcome = trial.check(self.state);
                         if outcome ~= 0; break; end
                         
                         % Prepare the next frame to draw
                         if self.display.asyncReady() > 0
                             self.display.drawElements(trial.elements);
-                            self.display.drawDotsFastAt([manipCenterXYZs(1, 1:2); eyeCenterXY], [10, 10], [255, 0, 0; 0, 0, 255])
+                            self.display.drawDotsFastAt([self.state.manipXY(1, :); self.state.eyeXY], [10, 10], [255, 0, 0; 0, 0, 255])
                             self.display.updateAsync();
                         end
                         timestamp = GetSecs - startTime;
@@ -324,22 +407,49 @@ classdef ExperimentManager < handle
                     
                     % Record data in an output struct, to be saved at the end of each trial.
                     eyeTrace = eyeTrace(~isnan(eyeTrace(:,1)), :);
-                    self.data.TrialData(ii).EyeTrackerData{jj, 1} = eyeTrace;
 
-                    for kk = 1 : self.numManipulators
-                        manipTraces{kk} = manipTraces{kk}(~isnan(manipTraces{kk}(:,1)), :);
-                        self.data.TrialData(ii).ManipulatorData{jj, kk} = manipTraces{kk};
+                    if practiceFlag
+                        practiceData(ii).Outcomes(jj) = outcome;
+                        practiceData(ii).EyeTrackerData{jj, 1} = eyeTrace;
+    
+                        for kk = 1 : self.numManipulators
+                            manipTraces{kk} = manipTraces{kk}(~isnan(manipTraces{kk}(:,1)), :);
+                            practiceData(ii).ManipulatorData{jj, kk} = manipTraces{kk};
+                        end
+                    else
+                        self.data.TrialData(ii).Outcomes(jj) = outcome;
+                        self.data.TrialData(ii).EyeTrackerData{jj, 1} = eyeTrace;
+    
+                        for kk = 1 : self.numManipulators
+                            manipTraces{kk} = manipTraces{kk}(~isnan(manipTraces{kk}(:,1)), :);
+                            self.data.TrialData(ii).ManipulatorData{jj, kk} = manipTraces{kk};
+                        end
                     end
-                    
-                    self.data.TrialData(ii).Outcomes(jj) = outcome;
 
                     % Save original trial information to the failbuffer if the trial didn't succeed
-                    if outcome ~= 1
-                        failedTrial.preRound = trial.preRound;
-                        failedTrial.elements = self.data.TrialData(ii).Elements{jj, 1};
-                        failedTrial.target = self.data.TrialData(ii).Targets{jj, 1};
-                        failedTrial.failzone = self.data.TrialData(ii).Failzones{jj, 1};
-                        failBuffer{length(failBuffer) + 1} = failedTrial;
+                    if ~practiceFlag
+                        if outcome ~= 1
+                            failedTrial.preRound = trial.preRound;
+                            failedTrial.elements = self.data.TrialData(ii).Elements{jj, 1};
+                            failedTrial.target = self.data.TrialData(ii).Targets{jj, 1};
+                            failedTrial.failzone = self.data.TrialData(ii).Failzones{jj, 1};
+                            failBuffer{length(failBuffer) + 1} = failedTrial;
+    
+                            self.failBeep();
+                        else
+                            self.successBeep();
+                        end
+                    end
+
+                    % Display the actual target, color-coded based on trial outcome
+                    if ~practiceFlag && ~isempty(trial.target)
+                        self.display.update();
+                        startTime = GetSecs;
+                        while (GetSecs < startTime + self.feedbackDuration)
+                            trial.target.Color = self.feedbackColors((outcome == 1) + 1, :);
+                            self.display.drawElements(trial.target);
+                            self.display.update();
+                        end
                     end
                 end
             end
