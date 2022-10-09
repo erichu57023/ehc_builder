@@ -121,8 +121,9 @@ classdef SingleShapeRingTrial < TrialInterface
                 end
 
                 % Set reach target threshold to max of visual stimuli radius and corrected practice
-                % radius.
-                self.manipPassRadius = max(self.targetRadius, self.practiceOutcome);
+                % radius, and set upper limit based on distance from center.
+                self.manipPassRadius = min(max(self.targetRadius, self.practiceOutcome), self.distFromCenter * 0.9);
+                cprintf('Text', 'SingleShapeRingTrial: Manipulator pass radius set to %.2f\n', self.manipPassRadius);
             end
 
             if self.numTargets == 1
