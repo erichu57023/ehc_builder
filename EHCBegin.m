@@ -24,8 +24,8 @@ background8BitRGB = [0, 0, 0];
 %% Define an eye tracker (see eye_trackers folder)
 eyeHomeRadius = 50; % Home radius in pixels
 % eyeTracker = NoEyeTracker();
-eyeTracker = WASDEyeTracker(eyeHomeRadius);
-% eyeTracker = EyeLink2(eyeHomeRadius);
+% eyeTracker = WASDEyeTracker(eyeHomeRadius);
+eyeTracker = EyeLink2(eyeHomeRadius);
     
 
 %% Define one or more manipulators (see manipulators folder)
@@ -33,10 +33,10 @@ manipHomeRadiusPixels = 50; % Home radius (in pixels) for on-screen home positio
 manipHomeRadiusMills = 15; % Home radius (in mm) for 3D coordinate home positions.
 forcePLCalibration = true; % Forces PolhemusLiberty to call calibration even if liberty_calibration.mat is present
 
-manipulator = TouchScreenMouseCursor(manipHomeRadiusPixels);
+% manipulator = TouchScreenMouseCursor(manipHomeRadiusPixels);
 % manipulator = PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeRadiusMills);
-% manipulator = [PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeRadiusMills), ...
-%                TouchScreenMouseCursor(manipHomeRadiusPixels)];
+manipulator = [PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeRadiusMills), ...
+                TouchScreenMouseCursor(manipHomeRadiusPixels)];
 
 
 %% Initialize the experiment
@@ -48,7 +48,8 @@ timeout = 5;
 stimulusSize = 25;
 eyeTargetSize = stimulusSize * 1.5;
 reachTargetSize = []; % If empty, will use data from practice trial
-clickToPass = isa(manipulator(end), 'TouchScreenMouseCursor'); % Denotes whether a click is required to pass the trial
+%clickToPass = isa(manipulator(end), 'TouchScreenMouseCursor'); % Denotes whether a click is required to pass the trial
+clickToPass = false;
 
 % Add a target practice trial (only one of each class is allowed)
 numPracticeRounds = 5;
