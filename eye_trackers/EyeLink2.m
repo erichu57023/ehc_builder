@@ -130,7 +130,7 @@ classdef EyeLink2 < EyeTrackerInterface
             end
         end
 
-        function availFlag = available(self)
+        function availFlag = available(~)
             % Check if a new sample is available.
             % OUTPUTS: 
             %    availFlag - Returns true if a new sample is available.
@@ -152,7 +152,7 @@ classdef EyeLink2 < EyeTrackerInterface
             self.state = state;
         end
 
-        function driftCorrect(self)
+        function driftCorrect(~)
             % Send a command to the Host PC to perform an online drift-correction.
 % %           For naive drift correction
 %             state = self.poll(); 
@@ -173,7 +173,7 @@ classdef EyeLink2 < EyeTrackerInterface
             homeFlag = norm(stateXY - self.homePosition) <= self.homeRadius;
         end
 
-        function close(self)
+        function close(~)
             % Shuts down the Eyelink connection.
 
             Eyelink('StopRecording');

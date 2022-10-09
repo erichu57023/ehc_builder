@@ -232,6 +232,9 @@ classdef SingleShapeRingTrial < TrialInterface
             % INPUTS:
             %    practiceData - A struct that contains data from practice trials.
 
+%             % Save data for debugging
+%             save("practice_data.mat", "practiceData");
+
             % Import data
             hitsMissesIdx = find(practiceData.Outcomes ~= 0);
             numValidRounds = length(hitsMissesIdx);
@@ -239,7 +242,7 @@ classdef SingleShapeRingTrial < TrialInterface
             targetXY = nan(numValidRounds, 2);
             calFunc = practiceData.Manipulators.calibrationFcn{end};
             for ii = 1 : numValidRounds
-                manipCalData = calFunc(practiceData.ManipulatorData{hitsMissesIdx(ii)}(end, :));
+                manipCalData = calFunc(practiceData.ManipulatorData{hitsMissesIdx(ii), end}(end, :));
                 manipXY(ii, :) = manipCalData(1:2);
                 targetXY(ii, :) = practiceData.Targets{hitsMissesIdx(ii)}.Location;
             end
