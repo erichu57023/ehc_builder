@@ -196,6 +196,7 @@ classdef ExperimentManager < handle
                             error('ExperimentManager:manualTermination', '%s detected, only the last completed trial will be saved', self.escapeKey);
                         end
                     end
+                    self.manipulators.resetAll();
                 end
             end
 

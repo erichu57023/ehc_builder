@@ -30,13 +30,14 @@ eyeTracker = EyeLink2(eyeHomeRadius);
 
 %% Define one or more manipulators (see manipulators folder)
 manipHomeRadiusPixels = 50; % Home radius (in pixels) for on-screen home positions.
-manipHomeRadiusMills = 15; % Home radius (in mm) for 3D coordinate home positions.
+manipHomeRadiusMills = 25; % Home radius (in mm) for 3D coordinate home positions.
 forcePLCalibration = true; % Forces PolhemusLiberty to call calibration even if liberty_calibration.mat is present
 
-% manipulator = TouchScreenMouseCursor(manipHomeRadiusPixels);
+% manipulator = MouseCursor(manipHomeRadiusPixels);
+% manipulator = TouchScreen(manipHomeRadiusPixels);
 % manipulator = PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeRadiusMills);
 manipulator = [PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeRadiusMills), ...
-                TouchScreenMouseCursor(manipHomeRadiusPixels)];
+                TouchScreen(manipHomeRadiusPixels)];
 
 
 %% Initialize the experiment
@@ -46,15 +47,14 @@ manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, backgro
 %% Define trial parameters
 timeout = 5;
 stimulusSize = 25;
-eyeTargetSize = stimulusSize * 1.5;
+eyeTargetSize = stimulusSize * 2;
 reachTargetSize = []; % If empty, will use data from practice trial
-%clickToPass = isa(manipulator(end), 'TouchScreenMouseCursor'); % Denotes whether a click is required to pass the trial
-clickToPass = false;
+clickToPass = ismember(class(manipulator(end)), {'TouchScreen', 'MouseCursor'}); % Denotes whether a click is required to pass the trial
 
 % Add a target practice trial (only one of each class is allowed)
-numPracticeRounds = 5;
+numPracticeRounds = 10;
 targetAccuracy = 0.7;
-manager.addPractice(SingleShapeRingTrial(numPracticeRounds, 'free', 5, 1, clickToPass, stimulusSize, eyeTargetSize, stimulusSize), targetAccuracy);
+manager.addPractice(SingleShapeRingTrial(numPracticeRounds, 'free', timeout, 1, clickToPass, stimulusSize, eyeTargetSize, stimulusSize), targetAccuracy);
 
 % Add a set of trials (see trials folder)
 % manager.addTrial(EmptyTrial(60));

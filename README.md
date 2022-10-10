@@ -1,6 +1,3 @@
-
-
-
 # ehc_builder
 
 This codebase is designed to run eye-hand coordination (EHC) experiments using the Psychtoolbox library in Matlab. It provides a common interface for users to implement their own trials, eye trackers and manipulators, and includes a few basic trial types as examples.
@@ -82,7 +79,8 @@ All eye tracker classes must inherit from and implement the provided `EyeTracker
 
 The following manipulators have already been implemented:
 * `NoManipulator`: a dummy class to be used for testing, or when no manipulator is needed for the experiment.
-* `TouchScreenMouseCursor`: an interface which monitors the position of the mouse cursor and the status of mouse buttons using the Psychtoolbox `GetMouse` function. Can also be used with a touchscreen, although I haven't done testing to verify the manipulator state when the touchscreen is not engaged.
+* `MouseCursor`: an interface which monitors the position of the mouse cursor and the status of mouse buttons using the Psychtoolbox `GetMouse` function. 
+* `TouchScreen`: an interface which monitors a touchscreen and logs all touch events using the Psychtoolbox `TouchEventGet` function.
 * `PolhemusLiberty`: an interface for the [Polhemus Liberty](https://polhemus.com/motion-tracking/all-trackers/liberty) 6-DOF position sensor, which assumes that position + orientation data is actively being published to a local TCP port. 
 
 All manipulator classes must inherit from and implement the provided `ManipulatorInterface`; see the class documentation for more details. 
@@ -145,4 +143,4 @@ When starting an experiment, the user will be queried for their initials; this w
 * Add more experiment specifications to the dialog box at the start of the experiment, to be saved in the output data file.
 * Allow multiple eye trackers to be specified.
 ---
-Last updated: October 5, 2022 by Eric Hu
+Last updated: October 10, 2022 by Eric Hu

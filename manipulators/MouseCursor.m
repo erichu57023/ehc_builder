@@ -1,5 +1,5 @@
-classdef TouchScreenMouseCursor < ManipulatorInterface
-% TOUCHSCREENMOUSECURSOR A wrapper class representing an interface for a touch screen or mouse.
+classdef MouseCursor < ManipulatorInterface
+% MOUSECURSOR A wrapper class for a mouse cursor.
 %
 % PROPERTIES:
 %    calibrationFcn - Simply strips the timestamps from the raw data.
@@ -10,7 +10,8 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
 %    establish - Sets the mouse position to the active display window.
 %    calibrate - Does nothing.
 %    available - Does nothing.
-%    poll - Returns the current position of the mouse, corrected to center coordinates.
+%    poll - Returns the current position of the mouse, corrected to center coordinates, along with
+%       the state of the mouse buttons.
 %    reset - Sets the mouse position to screen center.
 %    isHome - Checks if the mouse position is close to the center of the screen.
 %    close - Does nothing.
@@ -26,7 +27,7 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
     end
 
     methods
-        function self = TouchScreenMouseCursor(homeRadius)
+        function self = MouseCursor(homeRadius)
             arguments
                 homeRadius {mustBeFloat, mustBeScalarOrEmpty} = 50;
             end
@@ -42,11 +43,11 @@ classdef TouchScreenMouseCursor < ManipulatorInterface
             SetMouse(0, 0, self.window);
             successFlag = true;
             self.calibrationFcn = @(x) x(1:3);
-            disp('TouchScreenMouseCursor: established')
+            disp('MouseCursor: established')
         end
 
         function successFlag = calibrate(~)
-            disp('TouchScreenMouseCursor: calibrated')
+            disp('MouseCursor: calibrated')
             successFlag = true;
         end
 

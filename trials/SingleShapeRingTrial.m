@@ -185,6 +185,14 @@ classdef SingleShapeRingTrial < TrialInterface
             self.preRound = self.target;
             self.preRound.Location = [0, 0];
 
+            self.preRound(2).ElementType = 'text';
+            self.preRound(2).Location = [0, 400];
+            self.preRound(2).Color = [255 255 255];
+            self.preRound(2).Font = 'Ariel';
+            self.preRound(2).FontSize = 40;
+            self.preRound(2).VerticalSpacing = 2;
+            self.preRound(2).Text = 'Return to home position.';
+
             % Reset the segment stage for segmented mode.
             self.segmentFlag = false;
             self.preCheck = 0;
@@ -293,21 +301,18 @@ classdef SingleShapeRingTrial < TrialInterface
             noLook = state.eyeHomeFlag;
             if ~noLook; conditionFlag = -1; return; end
 
-            % Return if clickToPass and no click detected
-            if (self.clickToPass && ~state.manipExtra(end)); conditionFlag = 0; return; end 
-
-            distFromTarget = norm(state.manipXY(end, :) - self.target.Location);
-            conditionFlag = (distFromTarget <= self.manipPassRadius);
-
-            % Fail if clickToPass and click missed
-            if (self.clickToPass && ~conditionFlag); conditionFlag = -1; return; end
+            % Otherwise, run free check
+            conditionFlag = self.checkFree(state);
         end
 
         function conditionFlag = checkFree(self, state)
             % Checks if the reach is on-target, with no condition on eye position.
 
-            % Return if clickToPass and no click detected
-            if (self.clickToPass && ~state.manipExtra(end)); conditionFlag = 0; return; end 
+            % Return if clickToPass, and no click detected or manipulator has not left home.
+            if self.clickToPass && ~(state.manipExtra(end) && ~state.manipHomeFlag(1))
+                conditionFlag = 0; 
+                return
+            end 
 
             distFromTarget = norm(state.manipXY(end, :) - self.target.Location);
             conditionFlag = (distFromTarget <= self.manipPassRadius);

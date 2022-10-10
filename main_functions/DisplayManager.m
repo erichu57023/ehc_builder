@@ -89,8 +89,9 @@ classdef DisplayManager < handle
                 Priority(MaxPriority(self.window));
 
                 % Open an audio driver for feedback
+                InitializePsychSound(1);
                 self.audioDriver = PsychPortAudio('Open');
-                Snd('Open', self.audioDriver);
+                Snd('Open', self.audioDriver, 1);
     
                 % Load shape textures into window for fast display
                 [bitmaps, self.vertices] = GenerateShapeBitmaps();
@@ -248,10 +249,10 @@ classdef DisplayManager < handle
         function self = close(self)
             % Releases all textures and closes the window.
 
+            Snd('Close', 1);
+            PsychPortAudio('Close', self.audioDriver);
             Screen('Close', self.window);
             Priority(0);
-            Snd('Close');
-            PsychPortAudio('Close', self.audioDriver);
         end
     end
 
