@@ -17,10 +17,6 @@ PsychDefaultSetup(2);
 % Assign a display screen (zero-indexed)
 screenID = max(Screen('Screens'));
 
-% Assign a background color as an 8-bit RGB value (0 to 255)
-background8BitRGB = [0, 0, 0];
-
-
 %% Define an eye tracker (see eye_trackers folder)
 eyeHomeRadius = 50; % Home radius in pixels
 % eyeTracker = NoEyeTracker();
@@ -40,8 +36,20 @@ manipulator = [PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeR
                 TouchScreen(manipHomeRadiusPixels)];
 
 
-%% Initialize the experiment
-manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, background8BitRGB);
+%% Set overall experiment options (see ExperimentManager.SetDefaultOptions())
+% Assign a background color as an 8-bit RGB value (0 to 255)
+managerOptions.background8BitRGB = [0, 0, 0];
+
+% Set the min and max duration of the pre-round check.
+managerOptions.preRoundMinDuration = 1;     % seconds
+managerOptions.preRoundMaxDuration = 3;     % seconds
+
+% Set the behavior of the pre-round eye tracker check.
+managerOptions.eyeFixateRadius = 25;        % pixels
+managerOptions.eyeFixateMinDuration = 0.2;  % seconds
+managerOptions.eyeMaintainRadius = 50;      % pixels
+managerOptions.eyeMaintainMaxMisses = 5;    % count
+manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, managerOptions);
 
 
 %% Define trial parameters

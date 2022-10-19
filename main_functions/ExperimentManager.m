@@ -16,6 +16,7 @@ classdef ExperimentManager < handle
 
     properties
         data = struct
+        options = struct
     end
     properties (Access = private)
         display
@@ -26,25 +27,48 @@ classdef ExperimentManager < handle
         trials
         state
     end
-    properties (Constant, Access = private)
-        driftCorrKey = 'M';
-        calibrateKey = 'N';
-        escapeKey = 'Escape';
-        activeKeys = arrayfun(@KbName, {ExperimentManager.driftCorrKey, ExperimentManager.calibrateKey, ExperimentManager.escapeKey});
-        feedbackColors = [255, 102, 102; 102, 255, 102]; % [failColor; successColor]
-        feedbackDuration = 0.5; % Duration of visual feedback for target outcome in secs
-        successBeep = @(~) Beeper(1000, 0.7, 0.1);
-        failBeep = @(~) Beeper(200, 0.7, 0.1)
+
+    methods (Static, Access = private)
+        function options = SetDefaultOptions(overrideOptions)
+            % Set default options
+            options.background8BitRGB = [0, 0, 0];
+            options.driftCorrKey = 'M';
+            options.calibrateKey = 'N';
+            options.escapeKey = 'Escape';
+            options.feedbackColors = [255, 102, 102; 102, 255, 102]; % [failColor; successColor]
+            options.feedbackDuration = 0.5; % Duration of visual feedback for target outcome in secs
+            options.successBeep = @(~) Beeper(1000, 0.7, 0.1);
+            options.failBeep = @(~) Beeper(200, 0.7, 0.1);
+
+            options.preRoundMinDuration = 1;
+            options.preRoundMaxDuration = 3;
+            options.eyeFixateRadius = 25;
+            options.eyeFixateMinDuration = 0.2;
+            options.eyeMaintainRadius = 50;
+            options.eyeMaintainMaxMisses = 5;
+
+            % Override specific options
+            if ~isempty(overrideOptions)
+                optionsToSet = fieldnames(overrideOptions);
+                for ii = 1:length(optionsToSet)
+                    if isfield(options, optionsToSet{ii})
+                        options.(optionsToSet{ii}) = overrideOptions.(optionsToSet{ii});
+                    else
+                        error('ExperimentManager:invalidOption', '%s is not a valid option', optionsToSet{ii});
+                    end
+                end
+            end
+        end
     end
 
     methods
-        function self = ExperimentManager(screenID, eyeTracker, manipulatorList, filename, backgroundRGB)     % Init function
+        function self = ExperimentManager(screenID, eyeTracker, manipulatorList, filename, options)     % Init function
             arguments
                 screenID (1,1) {mustBeInteger, mustBeNonnegative}
                 eyeTracker (1,1) {mustBeA(eyeTracker, 'EyeTrackerInterface')}
                 manipulatorList (1,:) {mustBeA(manipulatorList, 'ManipulatorInterface')}
                 filename {mustBeText}
-                backgroundRGB (1,3) {mustBeInteger, mustBeNonnegative, mustBeLessThan(backgroundRGB, 256)} = [0, 0, 0];
+                options = struct([]);
             end
             % Constructs an ExperimentManager instance.
             % INPUTS:
@@ -52,9 +76,13 @@ classdef ExperimentManager < handle
             %    eyeTracker - An instance of EyeTrackerInterface
             %    manipulatorList - An array of ManipulatorInterface objects.
             %    filename - A filepath to which output data will be saved.
-            %    backgroundRGB - An RGB triplet defining the background color
+            %    options - A struct containing options to be overridden (valid fields are shown in
+            %       SetDefaultOptions().
 
-            self.display = DisplayManager(screenID, backgroundRGB/255);
+            self.options = ExperimentManager.SetDefaultOptions(options);
+            self.options.activeKeys = arrayfun(@KbName, {self.options.driftCorrKey, self.options.calibrateKey, self.options.escapeKey});
+
+            self.display = DisplayManager(screenID, self.options.background8BitRGB/255);
             self.eyeTracker = eyeTracker;
             self.manipulators = manipulatorList;
             self.numManipulators = length(manipulatorList);
@@ -149,7 +177,8 @@ classdef ExperimentManager < handle
             
             % Tell the operator that they can perform drift correction/calibration during
             % pre-round phase.
-            cprintf('RED*','%s: drift correction, %s: calibration, %s: terminate\n', self.driftCorrKey, self.calibrateKey, self.escapeKey);
+            cprintf('RED*','%s: drift correction, %s: calibration, %s: terminate\n', ...
+                self.options.driftCorrKey, self.options.calibrateKey, self.options.escapeKey);
 
             % Run each practice trial
             practiceData = struct();
@@ -190,10 +219,11 @@ classdef ExperimentManager < handle
                         [~, ~, keyCode] = KbCheck();
                         if keyCode(32)
                             break
-                        elseif keyCode(KbName(self.escapeKey))
+                        elseif keyCode(KbName(self.options.escapeKey))
                             self.close();
                             sca;
-                            error('ExperimentManager:manualTermination', '%s detected, only the last completed trial will be saved', self.escapeKey);
+                            error('ExperimentManager:manualTermination', '%s detected, only the last completed trial will be saved', ...
+                                self.options.escapeKey);
                         end
                     end
                     self.manipulators.resetAll();
@@ -273,12 +303,17 @@ classdef ExperimentManager < handle
                     
                     manipCenterXYZ = nan(1,3);
                     eyeCenterXY = nan(1,2);
+                    eyeMaintainMisses = 0;
+                    manipResetFlag = true;
+                    eyeResetFlag = true;
 
                     if ~isempty(trial.preRound)                        
-                        % Require the primary manipulator to be on the center target for 1-3 
-                        % seconds, randomized to avoid prediction of stimulus onset
+                        % Require the primary manipulator to be on the center target for a random
+                        % number of seconds, to avoid prediction of stimulus onset
                         startTime = GetSecs;
-                        readySetGo = 1 + 2 * rand;
+                        readySetGo = self.options.preRoundMinDuration + ...
+                            rand * (self.options.preRoundMaxDuration - self.options.preRoundMinDuration);
+
                         while (GetSecs - startTime < readySetGo)
                             % Check if operator wants to do eye tracker drift-correction or
                             % recalibration
@@ -288,12 +323,27 @@ classdef ExperimentManager < handle
                             if self.eyeTracker.available()
                                 eyeRawState = self.eyeTracker.poll();
                                 eyeCenterXY = self.eyeTracker.calibrationFcn(eyeRawState);
+
+                                % Eye check pt 1: fixation on a small central target
+                                if (GetSecs - startTime) <= self.options.eyeFixateMinDuration
+                                    eyeResetFlag = norm(eyeCenterXY) > self.options.eyeFixateRadius;
+                                
+                                % Eye check pt 2: maintenance on a larger central target
+                                else
+                                    if norm(eyeCenterXY) > self.options.eyeMaintainRadius
+                                        eyeMaintainMisses = eyeMaintainMisses + 1;
+                                    end
+                                    eyeResetFlag = eyeMaintainMisses > self.options.eyeMaintainMaxMisses;
+                                end
                             end
 
                             % Poll the primary manipulator
                             if self.manipulators(1).available()
                                 manipRawState = self.manipulators(1).poll();
                                 manipCenterXYZ = self.manipulators(1).calibrationFcn(manipRawState);
+
+                                % Reset timer if manipulator is not in home position
+                                manipResetFlag = ~(self.manipulators(1).isHome);
                             end
     
                             % Prime the target in the screen center
@@ -303,8 +353,9 @@ classdef ExperimentManager < handle
                                 self.display.updateAsync();
                             end
                             
-                            % Reset timer if manipulator and eye tracker are not in home position
-                            if ~(self.manipulators(1).isHome && self.eyeTracker.isHome)
+                            % Reset the timer if either manipulator or eye tracker isn't ready
+                            if manipResetFlag || eyeResetFlag
+                                eyeMaintainMisses = 0;
                                 startTime = GetSecs;
                             end
                         end
@@ -313,18 +364,19 @@ classdef ExperimentManager < handle
                     function operatorInterruptCheck()
                         % Checks if operator presses a keyboard button
                         [~, ~, keyCode] = KbCheck();
-                        if any(ismember(find(keyCode), self.activeKeys))
+                        if any(ismember(find(keyCode), self.options.activeKeys))
                             self.display.asyncEnd();
                             KbReleaseWait;
                             
-                            if keyCode(KbName(self.driftCorrKey))
+                            if keyCode(KbName(self.options.driftCorrKey))
                                 self.eyeTracker.driftCorrect();
-                            elseif keyCode(KbName(self.calibrateKey))
+                            elseif keyCode(KbName(self.options.calibrateKey))
                                 self.eyeTracker.calibrate();
-                            elseif keyCode(KbName(self.escapeKey))
+                            elseif keyCode(KbName(self.options.escapeKey))
                                 self.close();
                                 sca;
-                                error('ExperimentManager:manualTermination', '%s detected, only the last completed trial will be saved', self.escapeKey);
+                                error('ExperimentManager:manualTermination', ['%s detected, only the last completed trial will be saved,' ...
+                                    self.options.escapeKey]);
                             end
 
                             % Reset all manipulators
@@ -436,9 +488,9 @@ classdef ExperimentManager < handle
                             failedTrial.failzone = self.data.TrialData(ii).Failzones{jj, 1};
                             failBuffer{length(failBuffer) + 1} = failedTrial;
     
-                            self.failBeep();
+                            self.options.failBeep();
                         else
-                            self.successBeep();
+                            self.options.successBeep();
                         end
                     end
 
@@ -446,8 +498,8 @@ classdef ExperimentManager < handle
                     if ~practiceFlag && ~isempty(trial.target)
                         self.display.update();
                         startTime = GetSecs;
-                        while (GetSecs < startTime + self.feedbackDuration)
-                            trial.target.Color = self.feedbackColors((outcome == 1) + 1, :);
+                        while (GetSecs < startTime + self.options.feedbackDuration)
+                            trial.target.Color = self.options.feedbackColors((outcome == 1) + 1, :);
                             self.display.drawElements(trial.target);
                             self.display.update();
                         end
