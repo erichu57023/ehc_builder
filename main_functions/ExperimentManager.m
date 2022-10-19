@@ -303,7 +303,7 @@ classdef ExperimentManager < handle
                     
                     manipCenterXYZ = nan(1,3);
                     eyeCenterXY = nan(1,2);
-                    eyeMaintainMisses = 0;
+                    eyeConsecutiveMisses = 0;
                     manipResetFlag = true;
                     eyeResetFlag = true;
 
@@ -331,9 +331,11 @@ classdef ExperimentManager < handle
                                 % Eye check pt 2: maintenance on a larger central target
                                 else
                                     if norm(eyeCenterXY) > self.options.eyeMaintainRadius
-                                        eyeMaintainMisses = eyeMaintainMisses + 1;
+                                        eyeConsecutiveMisses = eyeConsecutiveMisses + 1;
+                                    else
+                                        eyeConsecutiveMisses = 0;
                                     end
-                                    eyeResetFlag = eyeMaintainMisses > self.options.eyeMaintainMaxMisses;
+                                    eyeResetFlag = eyeConsecutiveMisses > self.options.eyeMaintainMaxMisses;
                                 end
                             end
 
@@ -355,7 +357,7 @@ classdef ExperimentManager < handle
                             
                             % Reset the timer if either manipulator or eye tracker isn't ready
                             if manipResetFlag || eyeResetFlag
-                                eyeMaintainMisses = 0;
+                                eyeConsecutiveMisses = 0;
                                 startTime = GetSecs;
                             end
                         end
@@ -383,6 +385,7 @@ classdef ExperimentManager < handle
                             self.manipulators.resetAll();
 
                             % Reset timer and restart loop
+                            eyeConsecutiveMisses = 0;
                             startTime = GetSecs;
                             self.display.update();
                         end
