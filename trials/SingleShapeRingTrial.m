@@ -298,7 +298,7 @@ classdef SingleShapeRingTrial < TrialInterface
             % target.
 
             % Fail if eye is outside home position
-            noLook = state.eyeHomeFlag;
+            noLook = norm(state.eyeXY) <= min(self.distFromCenter/2, self.eyePassRadius * 2);
             if ~noLook; conditionFlag = -1; return; end
 
             % Otherwise, run free check
