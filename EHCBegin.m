@@ -36,7 +36,7 @@ manipulator = [PolhemusLiberty('localhost', 7234, forcePLCalibration, manipHomeR
                 TouchScreen(manipHomeRadiusPixels)];
 
 
-%% Set overall experiment options (see ExperimentManager.SetDefaultOptions())
+%% Set overall experiment options (see ExperimentManager.SetDefaultOptions() for all options)
 % Assign a background color as an 8-bit RGB value (0 to 255)
 managerOptions.background8BitRGB = [0, 0, 0];
 
@@ -49,6 +49,14 @@ managerOptions.eyeFixateRadius = 25;        % pixels
 managerOptions.eyeFixateMinDuration = 0.2;  % seconds
 managerOptions.eyeMaintainRadius = 50;      % pixels
 managerOptions.eyeMaintainMaxMisses = 5;    % count
+
+% Choose whether to replay failed rounds.
+managerOptions.replayFailedRounds = true;
+
+% Choose whether to display or hide the eye-tracker and manipulator positions.
+managerOptions.displayEyeTracker = true;
+managerOptions.displayManipulator = true;
+
 manager = ExperimentManager(screenID, eyeTracker, manipulator, filepath, managerOptions);
 
 
@@ -73,9 +81,9 @@ manager.addTrial(SingleShapeRingTrial(5, 'segmented', timeout, 1, clickToPass, s
 % manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 2, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize, 90));
 % manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 4, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize));
 % manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 8, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize));
-% manager.addTrial(NavonTask(3, 5, "random"))
-% manager.addTrial(NavonTask(3, 5, "local"))
-% manager.addTrial(NavonTask(3, 5, "global"))
+% manager.addTrial(NavonTask(5, 5, "random", clickToPass, 'hox'))
+% manager.addTrial(NavonTask(5, 5, "local", clickToPass, 'hox'))
+% manager.addTrial(NavonTask(5, 5, "global", clickToPass, 'hox'))
 % manager.addTrial(TraceShapeTrial(1, 15, 'Random', 200))
 
 

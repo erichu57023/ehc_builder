@@ -1,6 +1,6 @@
 classdef NavonTask < TrialInterface
-% NAVONTASK A trial requiring the player to select the correct Navon element where a specific letter
-% is either a global or local feature.
+% NAVONTASK A trial requiring the player to select the correct Navon element, where a specific 
+% letter is either a global or local feature.
 %
 % PROPERTIES:
 %    numRounds - The number of rounds to generate in this set of trials.
@@ -31,30 +31,32 @@ classdef NavonTask < TrialInterface
     end
     properties (Access = private)
         mode
+        clickToPass
         allowedLetters
         letterText
         font
         fontSize
         distFromCenter
         randomizeFlag
-        targetDimensions
-        localColor; globalColor
+        targetRadius
+        targetColors
     end
 
     methods
-        function self = NavonTask(numRounds, timeout, mode, allowedLetters, distFromCenter, fontSize, monospaceFont, targetDimensions, localColor, globalColor)
+        function self = NavonTask(numRounds, timeout, mode, clickToPass, allowedLetters, distFromCenter, fontSize, monospaceFont, targetRadius, localColor, globalColor)
             % Defines a phase of trials.
             arguments
                 numRounds (1,1) {mustBeInteger, mustBePositive}
                 timeout (1,1) {mustBeNonnegative}
                 mode {mustBeMember(mode, ["random", "global", "local"])} = "random";
+                clickToPass (1,1) {mustBeNumericOrLogical} = true;
                 allowedLetters {mustBeText} = 'abcdefghijklmnopqrstuvwxyz';
                 distFromCenter (1,1) {mustBeInteger, mustBePositive} = 300;
                 fontSize (1,1) {mustBeInteger, mustBePositive} = 40;
                 monospaceFont {mustBeText} = 'Consolas';
-                targetDimensions (1,2) {mustBeInteger, mustBePositive} = [200, 200]
-                localColor (1,3) = [128, 128, 255];
-                globalColor (1,3) = [255, 128, 128];
+                targetRadius (1,1) {mustBeInteger, mustBePositive} = 40;
+                localColor (1,3) = [255, 255, 153];
+                globalColor (1,3) = [255, 153, 153];
             end
             % Constructs a NavonTask instance.
             % INPUTS:
@@ -64,6 +66,7 @@ classdef NavonTask < TrialInterface
             %    mode - Defines whether the experimental condition is testing for identification of
             %       local features, global features, or a random mix of the two. Allowed: "random",
             %       "global", "local"
+            %    clickToPass - Set to true if a click/touch is required to pass trials
             %    allowedLetters - A character array containing specific letters to be randomly drawn
             %       from. Defaults to the entire English alphabet.
             %    distFromCenter - The distance in pixels from the center of both element to the 
@@ -72,8 +75,7 @@ classdef NavonTask < TrialInterface
             %    monospaceFont - The name of an installed font for use by the text renderer. For
             %       Navon elements to be displayed properly, this must be a monospace font (all
             %       characters have the same width)
-            %    targetDimensions - The dimensions of invisible bounding boxes centered at the
-            %       center of each text box, which represent target zones for a pass/fail condition.
+            %    targetRadius - The radius of the colored circular hitbox underneath each target.
             %    localColor - An RGB triplet defining the color of the pre-round target if the 
             %       target is a local feature
             %    globalColor - An RGB triplet defining the color of the pre-round target if the 
@@ -85,11 +87,11 @@ classdef NavonTask < TrialInterface
             self.font = monospaceFont;
             self.fontSize = fontSize;
             self.mode = mode;
+            self.clickToPass = clickToPass;
             self.allowedLetters = unique(lower(allowedLetters));
             self.distFromCenter = distFromCenter;
-            self.targetDimensions = targetDimensions;
-            self.localColor = localColor;
-            self.globalColor = globalColor;
+            self.targetRadius = targetRadius;
+            self.targetColors = [localColor; globalColor];
 
             if length(self.allowedLetters) < 3
                 error('NavonTask: must provide at least 3 unique allowed letters');
@@ -110,6 +112,14 @@ classdef NavonTask < TrialInterface
             self.preRound.Font = self.font;
             self.preRound.FontSize = self.fontSize;
             self.preRound.VerticalSpacing = 2;
+
+            self.preRound(2).ElementType = 'text';
+            self.preRound(2).Location = [0, 400];
+            self.preRound(2).Color = [255 255 255];
+            self.preRound(2).Font = 'Ariel';
+            self.preRound(2).FontSize = 40;
+            self.preRound(2).VerticalSpacing = 2;
+            self.preRound(2).Text = 'Return to home position.';
 
             self.generateInstructions();
         end
@@ -141,9 +151,11 @@ classdef NavonTask < TrialInterface
                 smalls = smalls(randperm(2));
                 targetLetter = smalls(targetLetterIdx);
             end
-                
+            
+            % Generate 2 side-by-side Navon elements for display, along with their corresponding
+            % hitboxes
             idx = 1;
-            locations = self.distFromCenter .* [-1 0; 1 0];
+            locations = self.distFromCenter .* [-1 0.5; 1 0.5];
             for big = bigs
                 for small = smalls
                     % Choose the correct Navon outline from the preset list of 26
@@ -153,7 +165,7 @@ classdef NavonTask < TrialInterface
                     % Fill the Navon outline with the correct small letter
                     text = strrep(text, 'a', upper(small));
 
-                    % Populate the elements struct
+                    % Add Navon elements to the elements struct
                     self.elements(idx).ElementType = 'text';
                     self.elements(idx).Location = locations(idx, :);
                     self.elements(idx).Text = text;
@@ -162,10 +174,15 @@ classdef NavonTask < TrialInterface
                     self.elements(idx).FontSize = self.fontSize;
                     self.elements(idx).VerticalSpacing = 1;
 
+                    self.elements(idx+2).ElementType = 'texture';
+                    self.elements(idx+2).Shape = 'Circle';
+                    self.elements(idx+2).Location = locations(idx, :) - [0, self.distFromCenter];
+                    self.elements(idx+2).Radius = self.targetRadius;
+                    self.elements(idx+2).Color = self.targetColors((trialMode == "global")+1, :);
+
                     % Populate the target struct
                     if idx == targetLetterIdx
-                        self.target = self.elements(idx);
-                        self.target.Dimensions = self.targetDimensions;
+                        self.target = self.elements(idx + 2);
                     end
                     idx = idx + 1;
                 end
@@ -175,11 +192,7 @@ classdef NavonTask < TrialInterface
             self.preRound(1).Text = upper(targetLetter);
             
             % Change pre-round color based on trial type
-            if trialMode == "local"
-                self.preRound(1).Color = self.localColor;
-            else
-                self.preRound(1).Color = self.globalColor;
-            end
+            self.preRound(1).Color = self.targetColors((trialMode == "global")+1, :);
         end
 
         function conditionFlag = check(self, state)
@@ -188,12 +201,19 @@ classdef NavonTask < TrialInterface
             %    state - A struct that contains information about current eye and manipulator
             %       states. (Fields: manipXY, manipExtra, eyeXY, manipHomeFlag, eyeHomeFlag).
             % OUTPUTS:
-            %    conditionFlag - 1 if success (state within target position), 0 if timeout.
-            
-            xy = state.manipXY(1, :);
-            lim = 0.5 * self.targetDimensions;
-            targetLoc = self.target.Location;
-            conditionFlag = all(xy >= targetLoc - lim) && all(xy <= targetLoc + lim);
+            %    conditionFlag - 1 if success (state within target position), 0 if timeout, -1 if fail.
+
+            % Return if clickToPass, and no click detected.
+            if self.clickToPass && ~state.manipExtra(end)
+                conditionFlag = 0; 
+                return
+            end
+
+            distFromTarget = norm(state.manipXY(end, :) - self.target.Location);
+            conditionFlag = (distFromTarget <= self.targetRadius);
+
+            % Fail if clickToPass and click missed
+            if (self.clickToPass && ~conditionFlag); conditionFlag = -1; return; end
         end
     end
 
@@ -212,15 +232,15 @@ classdef NavonTask < TrialInterface
                 case "local"
                     instructText = ['Navon task: LOCAL', newline, ...
                         'Two big letters, each made of smaller letters, will appear.', newline, ...
-                        'Touch the side where the smaller letters match the target letter.'];
+                        'Touch the box on the side where the smaller letters match the target letter.'];
                 case "global"
                     instructText = ['Navon task: GLOBAL', newline, ...
                         'Two big letters, each made of smaller letters, will appear.', newline, ...
-                        'Touch the side where the big letter matches the target letter.'];
+                        'Touch the box on the side where the big letter matches the target letter.'];
                 case "random"
                     instructText = ['Navon task: RANDOM', newline, ...
                         'Two big letters, each made of smaller letters, will appear.', newline, ...
-                        'Touch the side that contains the target letter (may be big or small).'];
+                        'Touch the box on the side that contains the target letter (may be big or small).'];
             end
             
             self.instructions.Text = instructText;

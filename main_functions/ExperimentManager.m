@@ -39,6 +39,9 @@ classdef ExperimentManager < handle
             options.feedbackDuration = 0.5; % Duration of visual feedback for target outcome in secs
             options.successBeep = @(~) Beeper(1000, 0.7, 0.1);
             options.failBeep = @(~) Beeper(200, 0.7, 0.1);
+            options.displayEyeTracker = true;
+            options.displayManipulator = true;
+            options.replayFailedRounds = true;
 
             options.preRoundMinDuration = 1;
             options.preRoundMaxDuration = 3;
@@ -351,7 +354,12 @@ classdef ExperimentManager < handle
                             % Prime the target in the screen center
                             if self.display.asyncReady() > 0
                                 self.display.drawElements(trial.preRound);
-                                self.display.drawDotsFastAt([manipCenterXYZ(1:2); eyeCenterXY], [10, 10], [255, 0, 0; 0, 0, 255]);
+                                if self.options.displayEyeTracker
+                                    self.display.drawDotsFastAt(eyeCenterXY, 10, [0, 0, 255]);
+                                end
+                                if self.options.displayManipulator
+                                    self.display.drawDotsFastAt(manipCenterXYZ(1:2), 10, [255, 0, 0]);
+                                end
                                 self.display.updateAsync();
                             end
                             
@@ -455,7 +463,12 @@ classdef ExperimentManager < handle
                         % Prepare the next frame to draw
                         if self.display.asyncReady() > 0
                             self.display.drawElements(trial.elements);
-                            self.display.drawDotsFastAt([self.state.manipXY(1, :); self.state.eyeXY], [10, 10], [255, 0, 0; 0, 0, 255])
+                            if self.options.displayEyeTracker
+                                self.display.drawDotsFastAt(self.state.eyeXY, 10, [0, 0, 255]);
+                            end
+                            if self.options.displayManipulator
+                                self.display.drawDotsFastAt(self.state.manipXY(1, :), 10, [255, 0, 0]);
+                            end
                             self.display.updateAsync();
                         end
                         timestamp = GetSecs - startTime;
@@ -482,14 +495,17 @@ classdef ExperimentManager < handle
                         end
                     end
 
-                    % Save original trial information to the failbuffer if the trial didn't succeed
+                    % Play sound effect, and save original trial information to the failbuffer if 
+                    % the trial didn't succeed (must be enabled in options)
                     if ~practiceFlag
                         if outcome ~= 1
-                            failedTrial.preRound = trial.preRound;
-                            failedTrial.elements = self.data.TrialData(ii).Elements{jj, 1};
-                            failedTrial.target = self.data.TrialData(ii).Targets{jj, 1};
-                            failedTrial.failzone = self.data.TrialData(ii).Failzones{jj, 1};
-                            failBuffer{length(failBuffer) + 1} = failedTrial;
+                            if self.options.replayFailedRounds
+                                failedTrial.preRound = trial.preRound;
+                                failedTrial.elements = self.data.TrialData(ii).Elements{jj, 1};
+                                failedTrial.target = self.data.TrialData(ii).Targets{jj, 1};
+                                failedTrial.failzone = self.data.TrialData(ii).Failzones{jj, 1};
+                                failBuffer{length(failBuffer) + 1} = failedTrial;
+                            end
     
                             self.options.failBeep();
                         else
