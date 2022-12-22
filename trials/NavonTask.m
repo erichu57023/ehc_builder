@@ -40,23 +40,27 @@ classdef NavonTask < TrialInterface
         randomizeFlag
         targetRadius
         targetColors
+        cumulError
+        targetAccuracy
+        adjTargetRadius
     end
 
     methods
-        function self = NavonTask(numRounds, timeout, mode, clickToPass, allowedLetters, distFromCenter, fontSize, monospaceFont, targetRadius, localColor, globalColor)
+        function self = NavonTask(numRounds, options)
             % Defines a phase of trials.
             arguments
                 numRounds (1,1) {mustBeInteger, mustBePositive}
-                timeout (1,1) {mustBeNonnegative}
-                mode {mustBeMember(mode, ["random", "global", "local"])} = "random";
-                clickToPass (1,1) {mustBeNumericOrLogical} = true;
-                allowedLetters {mustBeText} = 'abcdefghijklmnopqrstuvwxyz';
-                distFromCenter (1,1) {mustBeInteger, mustBePositive} = 300;
-                fontSize (1,1) {mustBeInteger, mustBePositive} = 40;
-                monospaceFont {mustBeText} = 'Consolas';
-                targetRadius (1,1) {mustBeInteger, mustBePositive} = 40;
-                localColor (1,3) = [255, 255, 153];
-                globalColor (1,3) = [255, 153, 153];
+                options.timeout (1,1) {mustBeNonnegative} = 5;
+                options.mode {mustBeMember(options.mode, ["random", "global", "local"])} = "random";
+                options.clickToPass (1,1) {mustBeNumericOrLogical} = true;
+                options.allowedLetters {mustBeText} = 'abcdefghijklmnopqrstuvwxyz';
+                options.distFromCenter (1,1) {mustBeInteger, mustBePositive} = 300;
+                options.fontSize (1,1) {mustBeInteger, mustBePositive} = 40;
+                options.monospaceFont {mustBeText} = 'Consolas';
+                options.targetRadius (1,1) {mustBeInteger, mustBePositive} = 40;
+                options.localColor (1,3) = [255, 255, 153];
+                options.globalColor (1,3) = [255, 153, 153];
+                options.targetAccuracy (1,1) {mustBeNonnegative, mustBeLessThan(options.targetAccuracy, 1)} = 0;
             end
             % Constructs a NavonTask instance.
             % INPUTS:
@@ -80,18 +84,24 @@ classdef NavonTask < TrialInterface
             %       target is a local feature
             %    globalColor - An RGB triplet defining the color of the pre-round target if the 
             %       target is a global feature
+            %    targetAccuracy - A float denoting the target accuracy for adjusting target size
+            %       within a trial. If set to 0, or if clickToPass is false, target size will remain 
+            %       fixed.
 
             self.numRounds = numRounds;
             self.trialType = 'free';
-            self.timeout = timeout;
-            self.font = monospaceFont;
-            self.fontSize = fontSize;
-            self.mode = mode;
-            self.clickToPass = clickToPass;
-            self.allowedLetters = unique(lower(allowedLetters));
-            self.distFromCenter = distFromCenter;
-            self.targetRadius = targetRadius;
-            self.targetColors = [localColor; globalColor];
+            self.timeout = options.timeout;
+            self.font = options.monospaceFont;
+            self.fontSize = options.fontSize;
+            self.mode = options.mode;
+            self.clickToPass = options.clickToPass;
+            self.allowedLetters = unique(lower(options.allowedLetters));
+            self.distFromCenter = options.distFromCenter;
+            self.targetRadius = options.targetRadius;
+            self.adjTargetRadius = self.targetRadius;
+            self.targetColors = [options.localColor; options.globalColor];
+            self.cumulError = [];
+            self.targetAccuracy = options.targetAccuracy;
 
             if length(self.allowedLetters) < 3
                 error('NavonTask: must provide at least 3 unique allowed letters');
@@ -125,7 +135,7 @@ classdef NavonTask < TrialInterface
         end
 
         function generate(self)
-            % Generates a new trial, by producing a list of all visual elements and their locations 
+            % Generates a new round, by producing a list of all visual elements and their locations 
             % (relative to the center of screen), and populating the element variables.
 
             if self.mode == "random"
@@ -210,10 +220,22 @@ classdef NavonTask < TrialInterface
             end
 
             distFromTarget = norm(state.manipXY(end, :) - self.target.Location);
-            conditionFlag = (distFromTarget <= self.targetRadius);
+            conditionFlag = (distFromTarget <= self.adjTargetRadius);
+            
+            if self.clickToPass
+                if self.targetAccuracy && (sign(state.manipXY(end, 1)) == sign(self.target.Location(1)))
+                    % Update list of errors for this trial
+                    self.cumulError = [self.cumulError, distFromTarget];
+    
+                    % Adjust target radius based on cumulative error, using Rayleigh distribution
+                    updatedRadius = raylinv(self.targetAccuracy, raylfit(self.cumulError));
 
-            % Fail if clickToPass and click missed
-            if (self.clickToPass && ~conditionFlag); conditionFlag = -1; return; end
+                    % Set upper and lower bounds on adjusted radius
+                    self.adjTargetRadius = min(max(updatedRadius, self.targetRadius), self.distFromCenter);
+                end
+                % Fail (-1) if click missed
+                conditionFlag = conditionFlag * 2 - 1;
+            end
         end
     end
 

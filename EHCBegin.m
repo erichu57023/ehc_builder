@@ -81,9 +81,9 @@ manager.addTrial(SingleShapeRingTrial(5, 'segmented', timeout, 1, clickToPass, s
 % manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 2, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize, 90));
 % manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 4, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize));
 % manager.addTrial(SingleShapeRingTrial(3, 'free', timeout, 8, clickToPass, visualTargetSize, eyeTargetSize, reachTargetSize));
-% manager.addTrial(NavonTask(5, 5, "random", clickToPass, 'hox'))
-% manager.addTrial(NavonTask(5, 5, "local", clickToPass, 'hox'))
-% manager.addTrial(NavonTask(5, 5, "global", clickToPass, 'hox'))
+% manager.addTrial(NavonTask(10, mode="random", allowedLetters='hox', targetAccuracy=0.6))
+% manager.addTrial(NavonTask(5, mode="local", allowedLetters='hox', targetAccuracy=0.6))
+% manager.addTrial(NavonTask(5, mode="global", allowedLetters='hox', targetAccuracy=0.6))
 % manager.addTrial(TraceShapeTrial(1, 15, 'Random', 200))
 
 
