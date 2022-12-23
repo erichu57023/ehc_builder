@@ -100,6 +100,8 @@ classdef NavonTask < TrialInterface
             self.targetRadius = options.targetRadius;
             self.targetColors = [options.localColor; options.globalColor];
             self.targetAccuracy = options.targetAccuracy;
+            self.adjTargetRadius = self.targetRadius;
+            self.cumulError = [];
 
             if length(self.allowedLetters) < 3
                 error('NavonTask: must provide at least 3 unique allowed letters');
@@ -137,13 +139,14 @@ classdef NavonTask < TrialInterface
             % (relative to the center of screen), and populating the element variables.
 
             % Pull data on adjusted target size from previous Navon trials
-            if isfile('runtime.mat')
+            if isempty(self.cumulError) && isfile('runtime.mat')
                 load('runtime.mat', 'navon_radius', 'navon_error');
                 self.adjTargetRadius = navon_radius;
                 self.cumulError = navon_error;
             else
-                self.adjTargetRadius = self.targetRadius;
-                self.cumulError = [];
+                navon_radius = self.adjTargetRadius;
+                navon_error = self.cumulError;
+                save('runtime.mat', 'navon_radius', 'navon_error', '-v7.3', '-nocompression')
             end
 
             if self.mode == "random"
@@ -240,10 +243,10 @@ classdef NavonTask < TrialInterface
 
                     % Set upper and lower bounds on adjusted radius
                     self.adjTargetRadius = min(max(updatedRadius, self.targetRadius), self.distFromCenter);
-                        
-                    navon_radius = self.adjTargetRadius;
-                    navon_error = self.cumulError;
-                    save('runtime.mat', 'navon_radius', 'navon_error');
+
+                    mf = matfile('runtime.mat', 'Writable', true);
+                    mf.navon_radius = updatedRadius;
+                    mf.navon_error(1, end + 1) = distFromTarget;
                 end
                 % Fail (-1) if click missed
                 conditionFlag = conditionFlag * 2 - 1;
