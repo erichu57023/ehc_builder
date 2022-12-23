@@ -38,6 +38,7 @@ classdef DisplayManager < handle
         textures
         vertices
         audioDriver
+        gaussShader
     end
 
     methods
@@ -87,7 +88,7 @@ classdef DisplayManager < handle
                 Screen('BlendFunction', self.window, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
                 HideCursor(self.window);
                 Priority(MaxPriority(self.window));
-
+    
                 % Open an audio driver for feedback
                 InitializePsychSound(1);
                 self.audioDriver = PsychPortAudio('Open');
@@ -100,6 +101,8 @@ classdef DisplayManager < handle
                     self.textures.(shapeNames{ii}) = Screen('MakeTexture', self.window, bitmaps.(shapeNames{ii}));
                 end
                 Screen('PreloadTextures', self.window);
+    
+                self.textures.SmoothedCircle = CreateProceduralSmoothedDisc(self.window, 256, 256, [], 50, 30);
                 successFlag = true;
             catch
                 successFlag = false;
@@ -198,7 +201,7 @@ classdef DisplayManager < handle
                         %       be a property in self.textures; see GENERATESHAPEBITMAPS
                         %    Radius - An int representing the size of the texture. The area
                         %       of the shape is normalized to that of a circle of radius 50.
-
+                        
                         texture = self.textures.(elements(ii).Shape);
                         elementRadius = elements(ii).Radius;
                         self.drawTexture(texture, location, elementRadius, elementColor);

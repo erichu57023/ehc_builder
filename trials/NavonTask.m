@@ -57,7 +57,7 @@ classdef NavonTask < TrialInterface
                 options.distFromCenter (1,1) {mustBeInteger, mustBePositive} = 300;
                 options.fontSize (1,1) {mustBeInteger, mustBePositive} = 40;
                 options.monospaceFont {mustBeText} = 'Consolas';
-                options.targetRadius (1,1) {mustBeInteger, mustBePositive} = 40;
+                options.targetRadius (1,1) {mustBeInteger, mustBePositive} = 50;
                 options.localColor (1,3) = [255, 255, 153];
                 options.globalColor (1,3) = [255, 153, 153];
                 options.targetAccuracy (1,1) {mustBeNonnegative, mustBeLessThan(options.targetAccuracy, 1)} = 0;
@@ -98,9 +98,7 @@ classdef NavonTask < TrialInterface
             self.allowedLetters = unique(lower(options.allowedLetters));
             self.distFromCenter = options.distFromCenter;
             self.targetRadius = options.targetRadius;
-            self.adjTargetRadius = self.targetRadius;
             self.targetColors = [options.localColor; options.globalColor];
-            self.cumulError = [];
             self.targetAccuracy = options.targetAccuracy;
 
             if length(self.allowedLetters) < 3
@@ -137,6 +135,16 @@ classdef NavonTask < TrialInterface
         function generate(self)
             % Generates a new round, by producing a list of all visual elements and their locations 
             % (relative to the center of screen), and populating the element variables.
+
+            % Pull data on adjusted target size from previous Navon trials
+            if isfile('runtime.mat')
+                load('runtime.mat', 'navon_radius', 'navon_error');
+                self.adjTargetRadius = navon_radius;
+                self.cumulError = navon_error;
+            else
+                self.adjTargetRadius = self.targetRadius;
+                self.cumulError = [];
+            end
 
             if self.mode == "random"
                 trialMode = ["global", "local"];
@@ -185,7 +193,7 @@ classdef NavonTask < TrialInterface
                     self.elements(idx).VerticalSpacing = 1;
 
                     self.elements(idx+2).ElementType = 'texture';
-                    self.elements(idx+2).Shape = 'Circle';
+                    self.elements(idx+2).Shape = 'SmoothedCircle';
                     self.elements(idx+2).Location = locations(idx, :) - [0, self.distFromCenter];
                     self.elements(idx+2).Radius = self.targetRadius;
                     self.elements(idx+2).Color = self.targetColors((trialMode == "global")+1, :);
@@ -232,6 +240,10 @@ classdef NavonTask < TrialInterface
 
                     % Set upper and lower bounds on adjusted radius
                     self.adjTargetRadius = min(max(updatedRadius, self.targetRadius), self.distFromCenter);
+                        
+                    navon_radius = self.adjTargetRadius;
+                    navon_error = self.cumulError;
+                    save('runtime.mat', 'navon_radius', 'navon_error');
                 end
                 % Fail (-1) if click missed
                 conditionFlag = conditionFlag * 2 - 1;

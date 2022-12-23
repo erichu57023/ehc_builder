@@ -535,6 +535,7 @@ classdef ExperimentManager < handle
             self.manipulators.closeAll();
             self.display.asyncEnd();
             self.display.close();
+            delete('runtime.mat');
         end
     end
 end
